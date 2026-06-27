@@ -3,39 +3,76 @@
     import {Context} from "../Context";
     import type PanelService from "../services/PanelService.svelte";
     import EmailView from "./EmailView.svelte";
+    import type {ParsedMessage} from "../services/GmailService";
 
-    let { baseMessage }: { baseMessage: gapi.client.gmail.Message } = $props();
+    let { message }: { message: ParsedMessage } = $props();
     let ps: PanelService = getContext(Context.PANEL_SERVICE)
-
-    const getFullMessage = async () => {
-        let fullMessage = (await gapi.client.gmail.users.messages.get({...baseMessage, userId: 'me'})).result;
-        return {
-            sender: fullMessage.payload?.headers?.find(i => i.name === 'From')?.value,
-            subject: fullMessage.payload?.headers?.find(i => i.name === 'Subject')?.value,
-            date: fullMessage.payload?.headers?.find(i => i.name === 'Date')?.value,
-            preview: fullMessage.snippet?.substring(0, 200).replaceAll('&#39;', "'")
-        }
-    }
 
     const openPanel = () => {
         ps.panels = [ps.panels[0]]
-        ps.addPanel({component: EmailView, props: { baseMessage: baseMessage }})
-        console.log(ps.panels);
+        ps.addPanel({component: EmailView, props: { message }})
+    }
+
+    const handleKeydown = (event: KeyboardEvent) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            openPanel();
+        }
     }
 
 </script>
 
-<div class="email" onclick={openPanel}>
-    {#await getFullMessage()}
-        <span>Loading messages...</span>
-    {:then res}
-        <span class="sender">{res.sender ?? "Unknown sender"}</span>
-        <div class="content">
-            <span class="subject">{res.subject ?? "No subject"}</span>
-            <span class="preview"> — {res.preview ?? ""}</span>
-        </div>
-        <span class="date">{res.date ?? "??"}</span>
-    {:catch ex}
-        <span>Error loading message!</span><code>{ex}</code>
-    {/await}
+<div class="email" role="button" tabindex="0" onclick={openPanel} onkeydown={handleKeydown}>
+    <span class="sender">{message.sender ?? "Unknown sender"}</span>
+    <div class="content">
+        <span class="subject">{message.subject ?? "No subject"}</span>
+        <span class="preview"> — {message.preview}</span>
+    </div>
+    <span class="date">{message.date ?? "??"}</span>
 </div>
+
+<style>
+    .sender, .content, .date {
+        /*display: flex;*/
+        white-space: nowrap;
+        overflow: hidden;
+    }
+
+    .sender {
+        min-width: 20%;
+    }
+
+    .date {
+        width: 100px;
+    }
+
+    .content {
+        width: 100%;
+    }
+
+    .preview {
+        width: 20%;
+    }
+
+    .email {
+        padding: 7px;
+        display: flex;
+        gap:30px;
+    }
+
+    .email.selected {
+        background-color: rgba(224, 131, 255, 0.1);
+    }
+
+    .email.selected:hover {
+        background-color: rgba(112, 67, 128, 0.1);
+    }
+
+    .email:hover {
+        background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .email .preview {
+        color: rgba(239, 239, 239, 0.5);
+    }
+</style>

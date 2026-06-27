@@ -9,11 +9,11 @@ copy .env.example to .env and fill out the api information
 ### todo [ai generated]
 
 #### Current implementation gaps
-- [ ] Load message lists with pagination, refresh, empty states, and robust error handling.
-- [ ] Avoid fetching each message twice when opening mail from the list.
-- [ ] Decode and render plain-text, HTML, and multipart messages reliably instead of only using the first `text/html` part.
-- [ ] Sanitize or safely sandbox rendered HTML email content.
-- [ ] Add loading, retry, and authorization-error states across Gmail API calls.
+- [x] Load message lists with pagination, refresh, empty states, and robust error handling.
+- [x] Avoid fetching each message twice when opening mail from the list.
+- [x] Decode and render plain-text, HTML, and multipart messages reliably instead of only using the first `text/html` part.
+- [x] Sanitize or safely sandbox rendered HTML email content.
+- [x] Add loading, retry, and authorization-error states across Gmail API calls.
 - [ ] Configure and document the required Google OAuth client ID and API key values.
 - [ ] Add sign-out and token/session lifecycle handling.
 - [ ] Replace the hard-coded header date and demo account with the signed-in account's real profile data.

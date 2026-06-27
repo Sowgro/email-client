@@ -1,8 +1,8 @@
 import type {Component} from "svelte";
 
-interface ComponentEntry<T extends Record<string, unknown> = Record<string, unknown>> {
-    component: Component<T>;
-    props: T;
+interface ComponentEntry {
+    component: Component<any>;
+    props: Record<string, unknown>;
 }
 
 class PanelService {

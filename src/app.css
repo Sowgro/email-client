@@ -193,79 +193,6 @@ input[type=text] {
   /*min-width: 300px;*/
 }
 
-/* Email View */
-.emailView {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  height: 100%;
-}
-
-.emailView .content {
-  display: block;
-  overflow: clip;
-}
-
-.emailView .action-bar {
-  display: flex;
-}
-
-.emailView .subject, .bundle-name {
-  font-size: larger;
-}
-
-.emailView .content {
-  padding-top: 20px;
-}
-
-/* Email List */
-.emailList .table {
-  width: 100%;
-}
-.emailList .sender, .emailList .content, .emailList .date {
-  /*display: flex;*/
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.emailList .sender {
-  min-width: 20%;
-}
-
-.emailList .date {
-  width: 100px;
-}
-
-.emailList .content {
-  width: 100%;
-}
-
-.emailList .preview {
-  width: 20%;
-}
-
-.emailList .email {
-  padding: 7px;
-  display: flex;
-  gap:30px;
-}
-
-.emailList .email.selected {
-  background-color: rgba(224, 131, 255, 0.1);
-}
-
-.emailList .email.selected:hover {
-  background-color: rgba(112, 67, 128, 0.1);
-}
-
-.emailList .email:hover {
-  background-color: rgba(0, 0, 0, 0.1);
-}
-
-.emailList .email .preview {
-  color: rgba(239, 239, 239, 0.5);
-}
-
 /* Action bar */
 .action-bar {
   display: flex;
@@ -280,10 +207,6 @@ input[type=text] {
 .action-bar > div {
   display: flex;
   gap: 10px;
-}
-
-.action-bar .icon:hover {
-  background-color: rgba(0, 0, 0, 0.2);
 }
 
 /* bundle */
@@ -326,4 +249,21 @@ iframe.content {
   width: 100%;
   height: 100%;
   border-style: none;
+}
+
+*:disabled {
+  opacity: 50%;
+  pointer-events: none;
+}
+
+.icon-button {
+  padding: 0;
+  margin: 0;
+  border-style: none;
+  background-color: transparent;
+  color: white;
+
+  :hover {
+    background-color: rgba(0, 0, 0, 0.2);
+  }
 }
