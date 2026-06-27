@@ -11,25 +11,19 @@
         ps.panels.pop();
     }
 
-    const handleCloseKeydown = (event: KeyboardEvent) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            closePanel();
-        }
-    }
 </script>
 
 <div class="panel anim-test">
     <div class="emailView">
         <div class="action-bar">
             <div class="left">
-                <span
-                    class="icon"
-                    role="button"
+                <button
+                    class="icon-button"
                     tabindex="0"
                     onclick={closePanel}
-                    onkeydown={handleCloseKeydown}
-                >keyboard_arrow_right</span>
+                >
+                    <span class="icon">keyboard_arrow_right</span>
+                </button>
             </div>
             <div class="right">
                 <span class="icon">more_vert</span>

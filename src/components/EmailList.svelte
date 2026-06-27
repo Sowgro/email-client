@@ -5,7 +5,6 @@
     let messages: ParsedMessage[] = $state([]);
     let nextPageToken: string | undefined = $state();
     let loading = $state(true);
-    let loadingMore = $state(false);
     let error: unknown = $state();
 
     const activateOnKey = (event: KeyboardEvent, action: () => void) => {
@@ -16,15 +15,12 @@
     }
 
     const loadMessages = async (pageToken?: string) => {
-        if (pageToken) {
-            loadingMore = true;
-        } else {
-            loading = true;
-            messages = [];
-            nextPageToken = undefined;
-        }
-
+        loading = true;
         error = undefined;
+
+        if (!pageToken) {
+            messages = [];
+        }
 
         try {
             const page = await listMessagePage(pageToken);
@@ -32,10 +28,9 @@
             nextPageToken = page.nextPageToken;
         } catch (ex) {
             error = ex;
-        } finally {
-            loading = false;
-            loadingMore = false;
         }
+
+        loading = false;
     }
 
     loadMessages();
@@ -47,16 +42,16 @@
         <div>
             <button
                     class="icon-button"
-                    disabled={loading || loadingMore}
+                    disabled={loading}
                     tabindex="0"
                     onclick={() => loadMessages()}
                     onkeydown={(event) => activateOnKey(event, () => loadMessages())}
             >
-                <div class="icon">refresh</div>
+                <span class="icon">refresh</span>
             </button>
         </div>
     </div>
-    {#if loading}
+    {#if !messages.length && loading}
         <span>Loading messages...</span>
     {:else if error}
         <span>Error loading messages!</span>
@@ -73,8 +68,8 @@
         </div>
         {#if nextPageToken}
             <div>
-                <button onclick={() => loadMessages(nextPageToken)} disabled={loadingMore}>
-                    {loadingMore ? 'Loading messages...' : 'Load more'}
+                <button onclick={() => loadMessages(nextPageToken)} disabled={loading}>
+                    {loading ? 'Loading messages...' : 'Load more'}
                 </button>
             </div>
         {/if}
