@@ -124,6 +124,28 @@ export async function moveMessageToTrash(messageId: string) {
     }
 }
 
+export async function restoreMessageFromTrash(messageId: string) {
+    try {
+        await gapi.client.gmail.users.messages.untrash({
+            userId: 'me',
+            id: messageId,
+        });
+    } catch (error) {
+        throw new GmailApiError(error);
+    }
+}
+
+export async function deleteMessageForever(messageId: string) {
+    try {
+        await gapi.client.gmail.users.messages.delete({
+            userId: 'me',
+            id: messageId,
+        });
+    } catch (error) {
+        throw new GmailApiError(error);
+    }
+}
+
 export async function downloadAttachment(message: ParsedMessage, attachment: ParsedAttachment) {
     if (!message.id || !attachment.id) {
         return;

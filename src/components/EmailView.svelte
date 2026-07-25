@@ -6,18 +6,22 @@
     import ContextMenu from "./ContextMenu.svelte";
     import {
         downloadAttachment,
+        deleteMessageForever,
         formatError,
         modifyMessageLabels,
         moveMessageToTrash,
+        restoreMessageFromTrash,
         type ParsedAttachment,
         type ParsedMessage
     } from "../services/GmailService";
 
     let {
         message,
+        mailbox,
         onMessageChanged,
     }: {
         message: ParsedMessage,
+        mailbox?: string,
         onMessageChanged?: (
             messageId: string,
             changes: Partial<ParsedMessage>,
@@ -97,6 +101,23 @@
 
     const trash = () => runAction('trash', moveMessageToTrash, {}, true)
 
+    const restore = () => runAction('restore', restoreMessageFromTrash, {}, true)
+
+    const permanentlyDelete = () => {
+        if (!window.confirm('Permanently delete this message? This cannot be undone.')) {
+            return
+        }
+
+        return runAction('delete forever', deleteMessageForever, {}, true)
+    }
+
+    const moveToInbox = () => runAction(
+        'move to inbox',
+        (id) => modifyMessageLabels(id, ['INBOX']),
+        {},
+        true,
+    )
+
     const markUnread = async () => {
         const succeeded = await runAction(
             'unread',
@@ -174,24 +195,57 @@
                 >
                     <span class="icon">push_pin</span>
                 </button>
-                <button
-                    class="icon-button"
-                    aria-label="Move to trash"
-                    title="Move to trash"
-                    disabled={!message.id || Boolean(activeAction)}
-                    onclick={trash}
-                >
-                    <span class="icon">delete</span>
-                </button>
-                <button
-                    class="icon-button"
-                    aria-label="Done (archive)"
-                    title="Done (archive)"
-                    disabled={!message.id || Boolean(activeAction)}
-                    onclick={archive}
-                >
-                    <span class="icon">check</span>
-                </button>
+                {#if mailbox === 'Trash'}
+                    <button
+                        class="icon-button"
+                        aria-label="Delete forever"
+                        title="Delete forever"
+                        disabled={!message.id || Boolean(activeAction)}
+                        onclick={permanentlyDelete}
+                    >
+                        <span class="icon">delete_forever</span>
+                    </button>
+                    <button
+                        class="icon-button"
+                        aria-label="Restore from trash"
+                        title="Restore from trash"
+                        disabled={!message.id || Boolean(activeAction)}
+                        onclick={restore}
+                    >
+                        <span class="icon">restore_from_trash</span>
+                    </button>
+                {:else}
+                    <button
+                        class="icon-button"
+                        aria-label="Move to trash"
+                        title="Move to trash"
+                        disabled={!message.id || Boolean(activeAction)}
+                        onclick={trash}
+                    >
+                        <span class="icon">delete</span>
+                    </button>
+                    {#if mailbox === 'Done'}
+                        <button
+                            class="icon-button"
+                            aria-label="Move to inbox"
+                            title="Move to inbox"
+                            disabled={!message.id || Boolean(activeAction)}
+                            onclick={moveToInbox}
+                        >
+                            <span class="icon">move_to_inbox</span>
+                        </button>
+                    {:else}
+                        <button
+                            class="icon-button"
+                            aria-label="Done (archive)"
+                            title="Done (archive)"
+                            disabled={!message.id || Boolean(activeAction)}
+                            onclick={archive}
+                        >
+                            <span class="icon">check</span>
+                        </button>
+                    {/if}
+                {/if}
             </div>
         </div>
         <span class="subject">{message.subject}</span>

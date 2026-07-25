@@ -7,10 +7,12 @@
 
     let {
         id,
+        mailbox,
         query,
         labelIds,
     }: {
         id: number,
+        mailbox?: string,
         query?: string,
         labelIds?: string[],
     } = $props()
@@ -92,6 +94,7 @@
             {#each messages as message}
                 <EmailListEntry
                     message={message}
+                    {mailbox}
                     selected={message.id === ps.panels.at(panelMountPoint + 1)?.props['message']?.['id'] }
                     onMessageChanged={handleMessageChanged}
                 />

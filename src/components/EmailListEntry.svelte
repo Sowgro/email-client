@@ -7,10 +7,12 @@
 
     let {
         message,
+        mailbox,
         selected = false,
         onMessageChanged,
     }: {
         message: ParsedMessage,
+        mailbox?: string,
         selected?: boolean,
         onMessageChanged?: (
             messageId: string,
@@ -22,7 +24,7 @@
 
     const openPanel = () => {
         ps.panels = [ps.panels[0]]
-        ps.addPanel({component: EmailView, props: {message, onMessageChanged}})
+        ps.addPanel({component: EmailView, props: {message, mailbox, onMessageChanged}})
     }
 
     const handleKeydown = (event: KeyboardEvent) => {

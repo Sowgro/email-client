@@ -41,6 +41,7 @@
             props: {
                 id: ++panelId,
                 // title: destination.name,
+                mailbox: destination.name,
                 query: destination.query,
                 labelIds: destination.labelIds,
             },
