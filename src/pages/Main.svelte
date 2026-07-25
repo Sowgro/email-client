@@ -1,13 +1,13 @@
 <script lang="ts">
     import EmailList from "../components/EmailList.svelte";
-    import PanelService from "../services/PanelService.svelte";
+    import {PanelService} from "../services/PanelService.svelte";
     import {setContext} from "svelte";
     import {Context} from "../Context";
 
     let ps = new PanelService()
     setContext(Context.PANEL_SERVICE, ps)
 
-    ps.addPanel({ component: EmailList, props: {} })
+    ps.addPanel({ component: EmailList, props: { id: 0 } })
 </script>
 
 <div id="header">

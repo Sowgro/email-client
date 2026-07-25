@@ -2,7 +2,7 @@ import type {Component} from "svelte";
 
 interface ComponentEntry {
     component: Component<any>;
-    props: Record<string, unknown>;
+    props: Record<string, any>;
 }
 
 class PanelService {
@@ -13,4 +13,4 @@ class PanelService {
     }
 }
 
-export default PanelService
+export {PanelService, type ComponentEntry}

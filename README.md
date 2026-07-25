@@ -14,6 +14,8 @@ copy .env.example to .env and fill out the api information
 - [x] Decode and render plain-text, HTML, and multipart messages reliably instead of only using the first `text/html` part.
 - [x] Sanitize or safely sandbox rendered HTML email content.
 - [x] Add loading, retry, and authorization-error states across Gmail API calls.
+- [x] Track the selected/open message in the list.
+- [x] Support attachments in message display.
 - [ ] Configure and document the required Google OAuth client ID and API key values.
 - [ ] Add sign-out and token/session lifecycle handling.
 - [ ] Replace the hard-coded header date and demo account with the signed-in account's real profile data.
@@ -21,8 +23,6 @@ copy .env.example to .env and fill out the api information
 - [ ] Make sidebar destinations functional: Inbox, Done, Drafts, Sent, Trash, Spam, and Settings.
 - [ ] Implement the Compose button.
 - [ ] Add real handlers for message action icons such as star, delete, done/archive, and more actions.
-- [ ] Support attachments in message display.
-- [ ] Track the selected/open message in the list.
 - [ ] Remove debug logging and commented-out experimental code.
 
 #### Expected email client features not yet implemented

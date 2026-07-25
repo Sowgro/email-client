@@ -6,6 +6,14 @@ export interface ParsedMessage {
     preview: string;
     html?: string;
     text?: string;
+    attachments: ParsedAttachment[];
+}
+
+export interface ParsedAttachment {
+    id?: string;
+    filename: string;
+    mimeType?: string;
+    size?: number;
 }
 
 export interface MessagePage {
@@ -59,8 +67,9 @@ export async function listMessagePage(pageToken?: string): Promise<MessagePage> 
 export function parseMessage(message: gapi.client.gmail.Message): ParsedMessage {
     const htmlBodies: string[] = [];
     const textBodies: string[] = [];
+    const attachments: ParsedAttachment[] = [];
 
-    collectMessageBodies(message.payload, htmlBodies, textBodies);
+    collectMessageParts(message.payload, htmlBodies, textBodies, attachments);
 
     return {
         id: message.id,
@@ -70,7 +79,39 @@ export function parseMessage(message: gapi.client.gmail.Message): ParsedMessage 
         preview: decodeHtmlEntities(message.snippet ?? '').substring(0, 200),
         html: htmlBodies.join('<hr>') || undefined,
         text: textBodies.join('\n\n') || undefined,
+        attachments,
     };
+}
+
+export async function downloadAttachment(message: ParsedMessage, attachment: ParsedAttachment) {
+    if (!message.id || !attachment.id) {
+        return;
+    }
+
+    try {
+        const response = await gapi.client.gmail.users.messages.attachments.get({
+            userId: 'me',
+            messageId: message.id,
+            id: attachment.id,
+        });
+
+        if (!response.result.data) {
+            return;
+        }
+
+        const blob = new Blob([decodeBase64UrlToBytes(response.result.data)], {
+            type: attachment.mimeType ?? 'application/octet-stream',
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+
+        link.href = url;
+        link.download = attachment.filename;
+        link.click();
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        throw new GmailApiError(error);
+    }
 }
 
 export function formatError(error: unknown): string {
@@ -83,13 +124,23 @@ export function formatError(error: unknown): string {
     return getErrorMessage(error);
 }
 
-function collectMessageBodies(
+function collectMessageParts(
     part: gapi.client.gmail.MessagePart | undefined,
     htmlBodies: string[],
     textBodies: string[],
+    attachments: ParsedAttachment[],
 ) {
     if (!part) {
         return;
+    }
+
+    if (part.filename && part.body?.attachmentId) {
+        attachments.push({
+            id: part.body.attachmentId,
+            filename: part.filename,
+            mimeType: part.mimeType,
+            size: part.body.size,
+        });
     }
 
     if (part.mimeType === 'text/html' && part.body?.data) {
@@ -101,7 +152,7 @@ function collectMessageBodies(
     }
 
     for (const childPart of part.parts ?? []) {
-        collectMessageBodies(childPart, htmlBodies, textBodies);
+        collectMessageParts(childPart, htmlBodies, textBodies, attachments);
     }
 }
 
@@ -110,12 +161,14 @@ function getHeader(message: gapi.client.gmail.Message, name: string): string | u
 }
 
 function decodeBase64Url(value: string): string {
+    return new TextDecoder().decode(decodeBase64UrlToBytes(value));
+}
+
+function decodeBase64UrlToBytes(value: string): Uint8Array {
     const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
     const padding = '='.repeat((4 - (base64.length % 4)) % 4);
     const binary = atob(base64 + padding);
-    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-
-    return new TextDecoder().decode(bytes);
+    return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
 function decodeHtmlEntities(value: string): string {

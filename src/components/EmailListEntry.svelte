@@ -1,11 +1,17 @@
 <script lang="ts">
     import {getContext} from "svelte";
     import {Context} from "../Context";
-    import type PanelService from "../services/PanelService.svelte";
+    import {PanelService} from "../services/PanelService.svelte";
     import EmailView from "./EmailView.svelte";
     import type {ParsedMessage} from "../services/GmailService";
 
-    let { message }: { message: ParsedMessage } = $props();
+    let {
+        message,
+        selected = false,
+    }: {
+        message: ParsedMessage,
+        selected?: boolean,
+    } = $props();
     let ps: PanelService = getContext(Context.PANEL_SERVICE)
 
     const openPanel = () => {
@@ -22,7 +28,7 @@
 
 </script>
 
-<div class="email" role="button" tabindex="0" onclick={openPanel} onkeydown={handleKeydown}>
+<div class:selected class="email" role="button" tabindex="0" onclick={openPanel} onkeydown={handleKeydown}>
     <span class="sender">{message.sender ?? "Unknown sender"}</span>
     <div class="content">
         <span class="subject">{message.subject ?? "No subject"}</span>
