@@ -2,30 +2,126 @@
     import {getContext} from "svelte";
     import {Context} from "../Context";
     import {PanelService} from "../services/PanelService.svelte";
+    import {ToastService} from "../services/ToastService.svelte";
+    import ContextMenu from "./ContextMenu.svelte";
     import {
         downloadAttachment,
         formatError,
+        modifyMessageLabels,
+        moveMessageToTrash,
         type ParsedAttachment,
         type ParsedMessage
     } from "../services/GmailService";
 
-    let { message }: { message: ParsedMessage } = $props();
+    let {
+        message,
+        onMessageChanged,
+    }: {
+        message: ParsedMessage,
+        onMessageChanged?: (
+            messageId: string,
+            changes: Partial<ParsedMessage>,
+            removeFromList?: boolean,
+        ) => void,
+    } = $props();
+
     let ps: PanelService = getContext(Context.PANEL_SERVICE)
-    let attachmentError: unknown = $state();
+    let toastService: ToastService = getContext(Context.TOAST_SERVICE)
+
     let downloadingAttachmentId: string | undefined = $state();
+    let activeAction: string | undefined = $state();
+    let starred = $state(message.starred);
+    let unread = $state(message.unread);
+
+    $effect(() => {
+        starred = message.starred;
+        unread = message.unread;
+    })
 
     function closePanel() {
-        ps.panels.pop();
+        ps.panels = ps.panels.slice(0, -1);
     }
 
+    const runAction = async (
+        name: string,
+        action: (messageId: string) => Promise<void>,
+        changes: Partial<ParsedMessage>,
+        removeFromList = false,
+    ): Promise<boolean> => {
+        if (!message.id) {
+            return false;
+        }
+
+        activeAction = name;
+
+        try {
+            await action(message.id);
+            onMessageChanged?.(message.id, changes, removeFromList);
+            toastService.success(`${name.charAt(0).toUpperCase()}${name.slice(1)} completed.`);
+
+            if (removeFromList) {
+                closePanel();
+            }
+            return true;
+        } catch (ex) {
+            toastService.error(formatError(ex));
+            return false;
+        } finally {
+            activeAction = undefined;
+        }
+    }
+
+    const toggleStar = async () => {
+        const nextStarred = !starred;
+        const succeeded = await runAction(
+            nextStarred ? 'star' : 'unstar',
+            (id) => modifyMessageLabels(
+                id,
+                nextStarred ? ['STARRED'] : [],
+                nextStarred ? [] : ['STARRED'],
+            ),
+            {starred: nextStarred},
+        );
+
+        if (succeeded) {
+            starred = nextStarred;
+        }
+    }
+
+    const archive = () => runAction(
+        'archive',
+        (id) => modifyMessageLabels(id, [], ['INBOX']),
+        {},
+        true,
+    )
+
+    const trash = () => runAction('trash', moveMessageToTrash, {}, true)
+
+    const markUnread = async () => {
+        const succeeded = await runAction(
+            'unread',
+            (id) => modifyMessageLabels(id, ['UNREAD']),
+            {unread: true},
+        );
+        if (succeeded) {
+            unread = true;
+        }
+    }
+
+    const markSpam = () => runAction(
+        'spam',
+        (id) => modifyMessageLabels(id, ['SPAM'], ['INBOX']),
+        {},
+        true,
+    )
+
     const handleAttachmentDownload = async (attachment: ParsedAttachment) => {
-        attachmentError = undefined;
         downloadingAttachmentId = attachment.id;
 
         try {
             await downloadAttachment(message, attachment);
         } catch (ex) {
-            attachmentError = ex;
+            toastService.error(formatError(ex));
         } finally {
             downloadingAttachmentId = undefined;
         }
@@ -58,10 +154,44 @@
                 </button>
             </div>
             <div class="right">
-                <span class="icon">more_vert</span>
-                <span class="icon">star</span>
-                <span class="icon">delete</span>
-                <span class="icon">check</span>
+                <ContextMenu disabled={Boolean(activeAction)}>
+                    <button role="menuitem" disabled={unread || Boolean(activeAction)} onclick={markUnread}>
+                        <span class="icon">mark_email_unread</span>
+                        Mark as unread
+                    </button>
+                    <button role="menuitem" disabled={Boolean(activeAction)} onclick={markSpam}>
+                        <span class="icon">report</span>
+                        Mark as spam
+                    </button>
+                </ContextMenu>
+                <button
+                    class:active={starred}
+                    class="icon-button"
+                    aria-label={starred ? 'Unpin message' : 'Pin message'}
+                    title={starred ? 'Unpin message' : 'Pin message'}
+                    disabled={!message.id || Boolean(activeAction)}
+                    onclick={toggleStar}
+                >
+                    <span class="icon">push_pin</span>
+                </button>
+                <button
+                    class="icon-button"
+                    aria-label="Move to trash"
+                    title="Move to trash"
+                    disabled={!message.id || Boolean(activeAction)}
+                    onclick={trash}
+                >
+                    <span class="icon">delete</span>
+                </button>
+                <button
+                    class="icon-button"
+                    aria-label="Done (archive)"
+                    title="Done (archive)"
+                    disabled={!message.id || Boolean(activeAction)}
+                    onclick={archive}
+                >
+                    <span class="icon">check</span>
+                </button>
             </div>
         </div>
         <span class="subject">{message.subject}</span>
@@ -81,9 +211,6 @@
                     </button>
                 {/each}
             </div>
-            {#if attachmentError}
-                <code>{formatError(attachmentError)}</code>
-            {/if}
         {/if}
 
         {#if message.html}
@@ -111,6 +238,14 @@
 
     .action-bar {
         display: flex;
+    }
+
+    .action-bar .right {
+        align-items: center;
+    }
+
+    .icon-button.active {
+        color: #e083ff;
     }
 
     .subject {

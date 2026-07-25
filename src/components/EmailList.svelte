@@ -24,6 +24,16 @@
 
     let panelMountPoint: number = ps.panels.indexOf(ps.panels.find(p => p.props['id'] === id)!)
 
+    const handleMessageChanged = (
+        messageId: string,
+        changes: Partial<ParsedMessage>,
+        removeFromList = false,
+    ) => {
+        messages = removeFromList
+            ? messages.filter(({id}) => id !== messageId)
+            : messages.map((message) => message.id === messageId ? {...message, ...changes} : message);
+    }
+
     const activateOnKey = (event: KeyboardEvent, action: () => void) => {
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
@@ -83,6 +93,7 @@
                 <EmailListEntry
                     message={message}
                     selected={message.id === ps.panels.at(panelMountPoint + 1)?.props['message']?.['id'] }
+                    onMessageChanged={handleMessageChanged}
                 />
             {/each}
         </div>

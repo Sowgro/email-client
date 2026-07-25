@@ -18,11 +18,11 @@ copy .env.example to .env and fill out the api information
 - [x] Support attachments in message display.
 - [x] Wire the search box to Gmail search instead of leaving it as a static input.
 - [x] Make sidebar destinations functional: Inbox, Done, Drafts, Sent, Trash, Spam, and Settings.
+- [x] Implement message action such as pin (star), delete, done (archive), and more actions.
 - [ ] Configure and document the required Google OAuth client ID and API key values.
 - [ ] Add sign-out and token/session lifecycle handling.
 - [ ] Replace the hard-coded header date and demo account with the signed-in account's real profile data.
 - [ ] Implement the Compose button.
-- [ ] Add real handlers for message action icons such as star, delete, done/archive, and more actions.
 - [ ] Remove debug logging and commented-out experimental code.
 
 #### Expected email client features not yet implemented

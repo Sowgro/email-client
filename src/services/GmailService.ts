@@ -6,6 +6,9 @@ export interface ParsedMessage {
     preview: string;
     html?: string;
     text?: string;
+    labelIds: string[];
+    starred: boolean;
+    unread: boolean;
     attachments: ParsedAttachment[];
 }
 
@@ -87,8 +90,38 @@ export function parseMessage(message: gapi.client.gmail.Message): ParsedMessage 
         preview: decodeHtmlEntities(message.snippet ?? '').substring(0, 200),
         html: htmlBodies.join('<hr>') || undefined,
         text: textBodies.join('\n\n') || undefined,
+        labelIds: message.labelIds ?? [],
+        starred: message.labelIds?.includes('STARRED') ?? false,
+        unread: message.labelIds?.includes('UNREAD') ?? false,
         attachments,
     };
+}
+
+export async function modifyMessageLabels(
+    messageId: string,
+    addLabelIds: string[] = [],
+    removeLabelIds: string[] = [],
+) {
+    try {
+        await gapi.client.gmail.users.messages.modify({
+            userId: 'me',
+            id: messageId,
+            resource: {addLabelIds, removeLabelIds},
+        });
+    } catch (error) {
+        throw new GmailApiError(error);
+    }
+}
+
+export async function moveMessageToTrash(messageId: string) {
+    try {
+        await gapi.client.gmail.users.messages.trash({
+            userId: 'me',
+            id: messageId,
+        });
+    } catch (error) {
+        throw new GmailApiError(error);
+    }
 }
 
 export async function downloadAttachment(message: ParsedMessage, attachment: ParsedAttachment) {

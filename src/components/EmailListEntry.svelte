@@ -8,15 +8,21 @@
     let {
         message,
         selected = false,
+        onMessageChanged,
     }: {
         message: ParsedMessage,
         selected?: boolean,
+        onMessageChanged?: (
+            messageId: string,
+            changes: Partial<ParsedMessage>,
+            removeFromList?: boolean,
+        ) => void,
     } = $props();
     let ps: PanelService = getContext(Context.PANEL_SERVICE)
 
     const openPanel = () => {
         ps.panels = [ps.panels[0]]
-        ps.addPanel({component: EmailView, props: { message }})
+        ps.addPanel({component: EmailView, props: {message, onMessageChanged}})
     }
 
     const handleKeydown = (event: KeyboardEvent) => {
