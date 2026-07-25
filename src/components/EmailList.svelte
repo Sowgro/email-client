@@ -5,7 +5,15 @@
     import {getContext} from "svelte";
     import {Context} from "../Context";
 
-    let { id }: { id: number } = $props()
+    let {
+        id,
+        query,
+        labelIds,
+    }: {
+        id: number,
+        query?: string,
+        labelIds?: string[],
+    } = $props()
 
     let messages: ParsedMessage[] = $state([]);
     let nextPageToken: string | undefined = $state();
@@ -32,7 +40,7 @@
         }
 
         try {
-            const page = await listMessagePage(pageToken);
+            const page = await listMessagePage({pageToken, query, labelIds});
             messages = pageToken ? [...messages, ...page.messages] : page.messages;
             nextPageToken = page.nextPageToken;
         } catch (ex) {

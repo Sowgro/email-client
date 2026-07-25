@@ -39,6 +39,13 @@ a {
   gap: 10px;
   padding: 5px;
   align-items: center;
+  width: 100%;
+  margin: 0;
+  color: inherit;
+  background: transparent;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  text-decoration: none;
 }
 
 #sidebar .item:hover {
@@ -134,6 +141,24 @@ button {
   /*max-width: 100%*/
 }
 
+#header form {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+#header .search-button {
+  flex-shrink: 0;
+  position: absolute;
+  right: 0;
+  height: 100%;
+  aspect-ratio: 1/1;
+}
+
+#header form:has(:placeholder-shown) .search-button {
+  display: none;
+}
+
 input[type=text] {
   background-color: transparent;
   border-style: solid;
@@ -197,6 +222,10 @@ input[type=text] {
 .action-bar {
   display: flex;
   justify-content: space-between;
+}
+
+.action-bar h2 {
+  margin: 0;
 }
 
 .action-bar .icon {

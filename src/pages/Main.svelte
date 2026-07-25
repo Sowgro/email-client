@@ -1,13 +1,100 @@
 <script lang="ts">
     import EmailList from "../components/EmailList.svelte";
     import {PanelService} from "../services/PanelService.svelte";
-    import {setContext} from "svelte";
+    import {onDestroy, setContext} from "svelte";
     import {Context} from "../Context";
+    import Settings from "../components/Settings.svelte";
+    import {Router} from "../services/Router.svelte";
 
     let ps = new PanelService()
     setContext(Context.PANEL_SERVICE, ps)
 
-    ps.addPanel({ component: EmailList, props: { id: 0 } })
+    type Destination = {
+        name: string;
+        icon: string;
+        path: string;
+        query?: string;
+        labelIds?: string[];
+    }
+
+    const destinations: Destination[] = [
+        {name: 'Inbox', icon: 'inbox', path: '/inbox', labelIds: ['INBOX']},
+        {name: 'Done', icon: 'check', path: '/done', query: 'in:archive'},
+        {name: 'Drafts', icon: 'draft', path: '/drafts', labelIds: ['DRAFT']},
+        {name: 'Sent', icon: 'send', path: '/sent', labelIds: ['SENT']},
+        {name: 'Trash', icon: 'delete', path: '/trash', labelIds: ['TRASH']},
+        {name: 'Spam', icon: 'report', path: '/spam', labelIds: ['SPAM']},
+    ]
+
+    const router = new Router()
+    let activeDestination = $state('Inbox')
+    let searchQuery = $state('')
+    let panelId = 0
+
+    const renderMailbox = (destination: Destination) => {
+        activeDestination = destination.name
+        ps.setPanel({
+            component: EmailList,
+            props: {
+                id: ++panelId,
+                // title: destination.name,
+                query: destination.query,
+                labelIds: destination.labelIds,
+            },
+        })
+    }
+
+    const search = () => {
+        const query = searchQuery.trim()
+        if (!query) {
+            router.navigate(destinations[0].path)
+            return
+        }
+
+        router.navigate(`/search?q=${encodeURIComponent(query)}`)
+    }
+
+    const renderRoute = (url: string) => {
+        const parsedUrl = new URL(url, window.location.origin)
+        const destination = destinations.find(({path}) => path === parsedUrl.pathname)
+
+        if (destination) {
+            searchQuery = ''
+            renderMailbox(destination)
+            return
+        }
+
+        if (parsedUrl.pathname === '/search') {
+            const query = parsedUrl.searchParams.get('q')?.trim() ?? ''
+            if (!query) {
+                router.navigate('/inbox', true)
+                return
+            }
+
+            searchQuery = query
+            activeDestination = 'Search'
+            ps.setPanel({
+                component: EmailList,
+                props: {id: ++panelId, title: `Search: ${query}`, query},
+            })
+            return
+        }
+
+        if (parsedUrl.pathname === '/settings') {
+            searchQuery = ''
+            activeDestination = 'Settings'
+            ps.setPanel({component: Settings, props: {id: ++panelId}})
+            return
+        }
+
+        router.navigate('/inbox', true)
+    }
+
+    $effect(() => {
+        renderRoute(router.url)
+    })
+
+    onDestroy(() => router.destroy())
 </script>
 
 <div id="header">
@@ -15,7 +102,12 @@
         Saturday, May 18
     </div>
     <div class="middle">
-        <input type="text" placeholder="Search Mail">
+        <form role="search" onsubmit={(event) => { event.preventDefault(); search(); }}>
+            <input bind:value={searchQuery} type="text" placeholder="Search Mail" aria-label="Search mail">
+            <button class="icon-button search-button" type="submit" aria-label="Search">
+                <span class="icon">search</span>
+            </button>
+        </form>
     </div>
     <div class="right">
         <span>demo@sowgro.net ▾</span>
@@ -28,41 +120,35 @@
                 <span class="icon">edit</span>
                 <span class="label">Compose</span>
             </button>
-            <div class="item selected">
-                <span class="icon">inbox</span>
-                <span class="label">Inbox</span>
-            </div>
-            <div class="item">
-                <span class="icon">check</span>
-                <span class="label">Done</span>
-            </div>
-            <div class="item">
-                <span class="icon">draft</span>
-                <span class="label">Drafts</span>
-            </div>
-            <div class="item">
-                <span class="icon">send</span>
-                <span class="label">Sent</span>
-            </div>
-            <div class="item">
-                <span class="icon">delete</span>
-                <span class="label">Trash</span>
-            </div>
-            <div class="item">
-                <span class="icon">report</span>
-                <span class="label">Spam</span>
-            </div>
+            {#each destinations as destination}
+                <a
+                    href={destination.path}
+                    class="item"
+                    class:selected={activeDestination === destination.name}
+                    aria-current={activeDestination === destination.name ? 'page' : undefined}
+                    onclick={(event) => router.followLink(event, destination.path)}
+                >
+                    <span class="icon">{destination.icon}</span>
+                    <span class="label">{destination.name}</span>
+                </a>
+            {/each}
         </div>
         <div id="bottom">
-            <div class="item">
+            <a
+                href="/settings"
+                class="item"
+                class:selected={activeDestination === 'Settings'}
+                aria-current={activeDestination === 'Settings' ? 'page' : undefined}
+                onclick={(event) => router.followLink(event, '/settings')}
+            >
                 <span class="icon">settings</span>
                 <span class="label">Settings</span>
-            </div>
+            </a>
         </div>
     </div>
     <div id="main">
         <div class="scroll" id="panels">
-            {#each ps.panels as { component: Component, props }}
+            {#each ps.panels as { component: Component, props } (props.id)}
                 <Component {...props} />
             {/each}
         </div>

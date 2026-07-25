@@ -21,6 +21,12 @@ export interface MessagePage {
     nextPageToken?: string;
 }
 
+export interface MessageListOptions {
+    pageToken?: string;
+    query?: string;
+    labelIds?: string[];
+}
+
 export class GmailApiError extends Error {
     public readonly status?: number;
     public readonly isAuthError: boolean;
@@ -35,12 +41,14 @@ export class GmailApiError extends Error {
 
 const metadataHeaders = ['From', 'Subject', 'Date'];
 
-export async function listMessagePage(pageToken?: string): Promise<MessagePage> {
+export async function listMessagePage(options: MessageListOptions = {}): Promise<MessagePage> {
     try {
         const listResponse = await gapi.client.gmail.users.messages.list({
             userId: 'me',
             maxResults: 25,
-            pageToken,
+            pageToken: options.pageToken,
+            q: options.query || undefined,
+            labelIds: options.labelIds,
         });
 
         const messageRefs = listResponse.result.messages ?? [];
