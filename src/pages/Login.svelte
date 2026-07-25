@@ -89,13 +89,46 @@
 
 </script>
 
-<div>
-    <script async defer src="https://apis.google.com/js/api.js" onload={gapiLoaded}></script>
-    <script async defer src="https://accounts.google.com/gsi/client" onload={gisLoaded}></script>
-    <h1>Login</h1>
-    {#if apisLoaded}
-        <button onclick={handleAuthClick}>Login with Google</button>
-    {:else}
-        <span>Waiting for Google apis...</span>
-    {/if}
+<div class="wrapper">
+    <div class="box">
+        <script async defer src="https://apis.google.com/js/api.js" onload={gapiLoaded}></script>
+        <script async defer src="https://accounts.google.com/gsi/client" onload={gisLoaded}></script>
+        <span>Welcome to</span>
+        <h1>Fettuccemail</h1>
+        <span class="icon">mail</span>
+        <h3>Login</h3>
+        {#if apisLoaded}
+            <button onclick={handleAuthClick}>Login with Google</button>
+        {:else}
+            <button disabled>Loading...</button>
+        {/if}
+    </div>
 </div>
+
+
+<style>
+    .icon {
+        font-size: 50px;
+        display: flex;
+        align-self: center;
+    }
+
+    .wrapper {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .box {
+        display: flex;
+        flex-direction: column;
+        background-color: #212121;
+        padding: 15px;
+        aspect-ratio: 1/1;
+    }
+
+    h1 {
+        margin: 0;
+    }
+</style>

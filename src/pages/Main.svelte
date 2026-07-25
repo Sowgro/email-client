@@ -1,10 +1,11 @@
 <script lang="ts">
     import EmailList from "../components/EmailList.svelte";
     import {PanelService} from "../services/PanelService.svelte";
-    import {onDestroy, setContext} from "svelte";
+    import {getContext, onDestroy, setContext} from "svelte";
     import {Context} from "../Context";
     import Settings from "../components/Settings.svelte";
     import {Router} from "../services/Router.svelte";
+    import type {ToastService} from "../services/ToastService.svelte";
 
     let ps = new PanelService()
     setContext(Context.PANEL_SERVICE, ps)
@@ -30,6 +31,8 @@
     let activeDestination = $state('Inbox')
     let searchQuery = $state('')
     let panelId = 0
+
+    let toastService: ToastService = getContext(Context.TOAST_SERVICE)
 
     const renderMailbox = (destination: Destination) => {
         activeDestination = destination.name
@@ -116,7 +119,7 @@
 <div id="not-header">
     <div id="sidebar">
         <div id="top">
-            <button>
+            <button onclick={() => toastService.show("Composition and reply features are not yet implemented.")}>
                 <span class="icon">edit</span>
                 <span class="label">Compose</span>
             </button>

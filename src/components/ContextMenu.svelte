@@ -65,7 +65,7 @@
         right: 0;
         min-width: 180px;
         padding: 3px;
-        background: #212121;
+        background: rgba(0, 0, 0, 0.15);
     }
 
     .menu :global(button) {
