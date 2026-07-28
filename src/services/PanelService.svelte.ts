@@ -11,10 +11,6 @@ class PanelService {
     public addPanel(entry: ComponentEntry) {
         this.panels = [...this.panels, entry]
     }
-
-    public setPanel(entry: ComponentEntry) {
-        this.panels = [entry]
-    }
 }
 
 export {PanelService, type ComponentEntry}
