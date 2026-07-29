@@ -65,6 +65,10 @@
         user-select: none;
     }
 
+    .email:focus {
+        outline: none;
+    }
+
     .email.selected {
         background-color: rgba(224, 131, 255, 0.1);
     }

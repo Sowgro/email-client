@@ -1,6 +1,9 @@
 <script lang="ts">
+    import {getContext} from "svelte";
+    import {Context} from "../Context";
     import EmailListEntry from "./EmailListEntry.svelte";
     import {formatError, listMessagePage, type ParsedMessage} from "../services/GmailService";
+    import {PanelService} from "../services/PanelService.svelte";
 
     let {
         id,
@@ -19,6 +22,60 @@
     let loading = $state(true);
     let error: unknown = $state();
     let loadGeneration = 0;
+    let emailListRoot: HTMLDivElement | undefined = $state();
+    const panelService: PanelService = getContext(Context.PANEL_SERVICE);
+
+    const getSelectedMessage = () =>
+        emailListRoot?.querySelector<HTMLElement>('.email.selected');
+
+    const isTextEntry = (target: EventTarget | null) =>
+        target instanceof HTMLElement
+        && Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
+
+    const handleWindowKeydown = (event: KeyboardEvent) => {
+        if (
+            panelService.panels.length < 2
+            || event.isComposing
+            || isTextEntry(event.target)
+            || emailListRoot?.closest('#panels')?.querySelector('[role="menu"]')
+        ) {
+            return;
+        }
+
+        const selectedMessage = getSelectedMessage();
+
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            selectedMessage?.focus();
+            panelService.panels = panelService.panels.slice(0, -1);
+            return;
+        }
+
+        if (
+            (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')
+            || event.altKey
+            || event.ctrlKey
+            || event.metaKey
+            || event.shiftKey
+        ) {
+            return;
+        }
+
+        const nextMessage = (
+            event.key === 'ArrowUp'
+                ? selectedMessage?.previousElementSibling
+                : selectedMessage?.nextElementSibling
+        ) as HTMLElement | null;
+
+        if (!nextMessage?.classList.contains('email')) {
+            return;
+        }
+
+        event.preventDefault();
+        nextMessage.click();
+        nextMessage.focus();
+        nextMessage.scrollIntoView({block: 'nearest'});
+    };
 
     const handleMessageChanged = (
         messageId: string,
@@ -83,6 +140,8 @@
     });
 </script>
 
+<svelte:window onkeydown={handleWindowKeydown}/>
+
 <div class="panel">
     <div class="action-bar">
         <div></div>
@@ -107,7 +166,7 @@
     {:else if messages.length === 0}
         <span>No messages found.</span>
     {:else}
-        <div class="emailList">
+        <div class="emailList" bind:this={emailListRoot}>
             {#each messages as message}
                 <EmailListEntry
                     message={message}
