@@ -64,13 +64,6 @@
         position: relative;
     }
 
-    .custom-trigger {
-        margin: 0;
-        padding: 5px;
-        background: transparent;
-        color: inherit;
-    }
-
     .menu {
         position: absolute;
         z-index: 2;

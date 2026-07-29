@@ -18,6 +18,7 @@
     let nextPageToken: string | undefined = $state();
     let loading = $state(true);
     let error: unknown = $state();
+    let loadGeneration = 0;
 
     const handleMessageChanged = (
         messageId: string,
@@ -36,7 +37,13 @@
         }
     }
 
-    const loadMessages = async (pageToken?: string) => {
+    const loadMessages = async (
+        pageToken?: string,
+        generation = pageToken ? loadGeneration : ++loadGeneration,
+    ) => {
+        const requestedQuery = query;
+        const requestedLabelIds = labelIds;
+
         loading = true;
         error = undefined;
 
@@ -45,17 +52,35 @@
         }
 
         try {
-            const page = await listMessagePage({pageToken, query, labelIds});
+            const page = await listMessagePage({
+                pageToken,
+                query: requestedQuery,
+                labelIds: requestedLabelIds,
+            });
+
+            if (generation !== loadGeneration) {
+                return;
+            }
+
             messages = pageToken ? [...messages, ...page.messages] : page.messages;
             nextPageToken = page.nextPageToken;
         } catch (ex) {
+            if (generation !== loadGeneration) {
+                return;
+            }
             error = ex;
+        } finally {
+            if (generation === loadGeneration) {
+                loading = false;
+            }
         }
-
-        loading = false;
     }
 
-    loadMessages();
+    $effect(() => {
+        query;
+        labelIds;
+        void loadMessages();
+    });
 </script>
 
 <div class="panel">
