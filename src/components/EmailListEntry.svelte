@@ -74,6 +74,7 @@
         padding: 7px;
         display: flex;
         gap:30px;
+        user-select: none;
     }
 
     .email.selected {

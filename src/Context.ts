@@ -1,4 +1,5 @@
 export enum Context {
+    AUTH_SERVICE = 'AUTH_SERVICE',
     PANEL_SERVICE = 'PANEL_SERVICE',
     TOAST_SERVICE = 'TOAST_SERVICE',
     ROUTER = "ROUTER",

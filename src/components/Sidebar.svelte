@@ -56,3 +56,62 @@
             </a>
         </div>
     </div>
+
+<style>
+    /* Sidebar */
+    #sidebar .item {
+        display: flex;
+        gap: 10px;
+        padding: 5px;
+        align-items: center;
+        width: 100%;
+        margin: 0;
+        color: inherit;
+        background: transparent;
+        justify-content: flex-start;
+        box-sizing: border-box;
+        text-decoration: none;
+    }
+
+    #sidebar .item:hover {
+        background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    #sidebar {
+        display:flex;
+        flex-direction: column;
+        max-width: fit-content;
+        background-color: rgba(0, 0, 0, 0.15);
+        padding: 15px;
+        min-width: 150px;
+        gap: 3px;
+        justify-content: space-between;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+    }
+
+    #sidebar .selected {
+        color: #e083ff;
+    }
+
+    @media (max-width: 1500px) {
+
+        #sidebar {
+            min-width: 30px;
+            contain: size;
+            padding: 5px;
+            overflow: hidden;
+        }
+
+        #sidebar .label {
+            display: none;
+        }
+
+        #sidebar button {
+            padding: 2px 3px;
+        }
+
+        #sidebar .icon {
+            font-size: larger;
+        }
+    }
+</style>

@@ -2,9 +2,27 @@
 An incomplete web email client currently using Google's gmail API
 
 ### setup
-copy .env.example to .env and fill out the api information
 
-`npm run dev`
+1. In the [Google Cloud console](https://console.cloud.google.com/), create or select a project.
+2. Enable the **Gmail API** under **APIs & Services → Library**.
+3. Configure the OAuth consent screen. While the app is in testing, add the Google accounts that will use it as test users.
+4. Under **APIs & Services → Credentials**, create an **API key**. Restrict it to the Gmail API and use **Websites** application restrictions for the URLs where this app runs.
+5. Create an **OAuth client ID** with application type **Web application**. Add the app origins, such as `http://localhost:5173`, to **Authorized JavaScript origins**.
+6. Copy `.env.example` to `.env` and set:
+
+   ```dotenv
+   VITE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+   VITE_API_KEY=your-google-api-key
+   ```
+
+   These `VITE_` values are bundled into the browser, so restrict the key and never put unrelated secrets in this file.
+
+7. Install dependencies and start the app:
+
+   ```sh
+   npm install
+   npm run dev
+   ```
 
 ### todo [ai generated]
 
@@ -19,11 +37,11 @@ copy .env.example to .env and fill out the api information
 - [x] Wire the search box to Gmail search instead of leaving it as a static input.
 - [x] Make sidebar destinations functional: Inbox, Done, Drafts, Sent, Trash, Spam, and Settings.
 - [x] Implement message action such as pin (star), delete, done (archive), and more actions.
-- [ ] Configure and document the required Google OAuth client ID and API key values.
-- [ ] Add sign-out and token/session lifecycle handling.
-- [ ] Replace the hard-coded header date and demo account with the signed-in account's real profile data.
-- [ ] Implement the Compose button.
+- [x] Add sign-out and token/session lifecycle handling.
+- [x] Replace the hard-coded header date and demo account with the signed-in account's real profile data.
+- [x] Configure and document the required Google OAuth client ID and API key values.
 - [ ] Remove debug logging and commented-out experimental code.
+- [ ] Implement the Compose button.
 
 #### Expected email client features not yet implemented
 - [ ] Send, reply, reply-all, forward, and save drafts.

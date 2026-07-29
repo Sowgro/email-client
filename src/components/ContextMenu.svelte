@@ -3,10 +3,12 @@
 
     let {
         children,
+        trigger,
         label = 'More actions',
         disabled = false,
     }: {
         children: Snippet,
+        trigger?: Snippet<[{open: boolean, toggle: () => void}]>,
         label?: string,
         disabled?: boolean,
     } = $props()
@@ -36,16 +38,20 @@
 <svelte:window onclick={handleWindowClick} onkeydown={handleWindowKeydown} />
 
 <div class="context-menu" bind:this={root}>
-    <button
-        class="icon-button"
-        aria-label={label}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        {disabled}
-        onclick={() => open = !open}
-    >
-        <span class="icon">more_vert</span>
-    </button>
+    {#if trigger}
+        {@render trigger({open, toggle: () => open = !open})}
+    {:else}
+        <button
+            class="icon-button"
+            aria-label={label}
+            aria-haspopup="menu"
+            aria-expanded={open}
+            {disabled}
+            onclick={() => open = !open}
+        >
+            <span class="icon">more_vert</span>
+        </button>
+    {/if}
     {#if open}
         <div class="menu" role="menu" tabindex="-1" onclick={() => open = false} onkeydown={handleMenuKeydown}>
             {@render children()}
@@ -58,6 +64,13 @@
         position: relative;
     }
 
+    .custom-trigger {
+        margin: 0;
+        padding: 5px;
+        background: transparent;
+        color: inherit;
+    }
+
     .menu {
         position: absolute;
         z-index: 2;
@@ -65,7 +78,7 @@
         right: 0;
         min-width: 180px;
         padding: 3px;
-        background: rgba(0, 0, 0, 0.15);
+        background: #212121;
     }
 
     .menu :global(button) {

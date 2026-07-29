@@ -61,7 +61,6 @@
         try {
             await action(message.id);
             onMessageChanged?.(message.id, changes, removeFromList);
-            toastService.success(`${name.charAt(0).toUpperCase()}${name.slice(1)} completed.`);
 
             if (removeFromList) {
                 closePanel();

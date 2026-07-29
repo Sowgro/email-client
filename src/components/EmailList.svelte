@@ -81,7 +81,6 @@
         <button onclick={() => loadMessages()}>Retry</button>
     {:else if messages.length === 0}
         <span>No messages found.</span>
-        <button onclick={() => loadMessages()}>Refresh</button>
     {:else}
         <div class="emailList">
             {#each messages as message}

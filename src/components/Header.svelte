@@ -2,10 +2,19 @@
     import {Router} from "../services/Router.svelte";
     import {getContext} from "svelte";
     import {Context} from "../Context";
+    import {AuthService} from "../services/AuthService.svelte";
+    import ContextMenu from "./ContextMenu.svelte";
 
     let router: Router = getContext(Context.ROUTER)
+    let auth: AuthService = getContext(Context.AUTH_SERVICE)
 
     let searchQuery = $state('')
+
+    const currentDate = new Intl.DateTimeFormat(undefined, {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+    }).format(new Date())
 
     $effect(() => {
         const url = new URL(router.url, window.location.origin)
@@ -28,7 +37,7 @@
 
 <div id="header">
     <div class="left">
-        Saturday, May 18
+        {currentDate}
     </div>
     <div class="middle">
         <form role="search" onsubmit={(event) => { event.preventDefault(); search(); }}>
@@ -39,6 +48,69 @@
         </form>
     </div>
     <div class="right">
-        <span>demo@sowgro.net ▾</span>
+        <ContextMenu label="Account menu">
+            {#snippet trigger({toggle})}
+                <button class="icon-button dropdown" onclick={toggle} >
+                    {auth.profile?.emailAddress ?? 'Google account'}
+                    <span class="icon" aria-hidden="true">arrow_drop_down</span>
+                </button>
+            {/snippet}
+            <button role="menuitem" onclick={() => auth.signOut()}>
+                <span class="icon" aria-hidden="true">logout</span>
+                Log out
+            </button>
+        </ContextMenu>
     </div>
 </div>
+
+<style>
+    /* Header */
+    #header {
+        padding: 5px;
+        color:white;
+        background-color: black;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    /* Search bar */
+    #header .middle {
+        width: 40%;
+        min-width: 250px;
+        /*max-width: 100%*/
+    }
+
+    #header form {
+        display: flex;
+        align-items: center;
+        position: relative;
+    }
+
+    #header .search-button {
+        flex-shrink: 0;
+        position: absolute;
+        right: 0;
+        height: 100%;
+        aspect-ratio: 1/1;
+    }
+
+    #header form:has(:placeholder-shown) .search-button {
+        display: none;
+    }
+
+    .right {
+        display: flex;
+        flex-direction: row;
+    }
+
+    .dropdown {
+        gap: 0;
+
+        span {
+            font-size: 20px;
+        }
+    }
+</style>
