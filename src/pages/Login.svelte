@@ -9,7 +9,7 @@
 <div class="wrapper">
     <div class="box">
         <span>Welcome to</span>
-        <h1>Fettuccemail</h1>
+        <h1>Fettucemail</h1>
         <span class="icon">mail</span>
         <h3>Login</h3>
         {#if auth.ready}
