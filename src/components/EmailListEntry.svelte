@@ -48,31 +48,20 @@
 
 <style>
     .sender, .content, .date {
-        /*display: flex;*/
+        min-width: 0;
         white-space: nowrap;
         overflow: hidden;
     }
 
-    .sender {
-        min-width: 20%;
-    }
-
     .date {
-        width: 100px;
-    }
-
-    .content {
-        width: 100%;
-    }
-
-    .preview {
-        width: 20%;
+        text-align: right;
     }
 
     .email {
         padding: 7px;
-        display: flex;
-        gap:30px;
+        display: grid;
+        grid-template-columns: 20% minmax(0, 1fr) 100px;
+        column-gap: 20px;
         user-select: none;
     }
 

@@ -33,9 +33,8 @@
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        padding: 12px;
+        padding: 10px;
         border-left: 4px solid #8f8f8f;
-        border-radius: 5px;
         color: white;
         background: #3a3a3a;
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
