@@ -21,8 +21,7 @@
     let ps: PanelService = getContext(Context.PANEL_SERVICE)
 
     const openPanel = () => {
-        ps.panels = [ps.panels[0]]
-        ps.addPanel(emailView)
+        ps.panels = [ps.panels[0], emailView]
     }
 
     const handleKeydown = (event: KeyboardEvent) => {

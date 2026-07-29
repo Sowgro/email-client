@@ -99,7 +99,8 @@ input[type=text] {
   justify-content: end;
 }
 
-.panel {
+.panel,
+.panel-slot {
   display: flex;
   flex-direction: column;
   min-width: calc(50% - 40px);
@@ -114,6 +115,19 @@ input[type=text] {
   overflow-x: clip;
   flex-shrink: 0;
   border-left: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.panel-slot {
+  overflow: clip;
+  padding: 0;
+}
+
+.panel-slot > .panel {
+  width: var(--panel-final-width, 100%);
+  min-width: var(--panel-final-width, 100%);
+  max-width: none;
+  flex: 0 0 var(--panel-final-width, 100%);
+  border-left: 0;
 }
 
 .panel > div {
@@ -148,34 +162,6 @@ input[type=text] {
   margin-top: 5px;
   display: block;
   margin-bottom: -15px;
-}
-
-/* animation test (not going well)*/
-.anim-test {
-  animation-name: slide-in;
-  /*animation-delay: 3s;*/
-  animation-duration: 0.5s;
-  animation-timing-function: ease-in-out;
-  /*margin-left: 50%;*/
-  /*text-wrap: nowrap;*/
-
-}
-
-@keyframes slide-in {
-  from {
-    min-width: 0;
-    width: 0;
-    max-width: 0;
-  }
-}
-
-@keyframes slide-out {
-  to {
-    min-width: 0;
-    width: 0;
-    max-width: 0;
-    display: none;
-  }
 }
 
 iframe.content {

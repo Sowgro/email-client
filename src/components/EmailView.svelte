@@ -161,7 +161,7 @@
 
 </script>
 
-<div class="panel anim-test">
+<div class="panel">
     <div class="emailView">
         <div class="action-bar">
             <div class="left">
