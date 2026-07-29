@@ -81,10 +81,26 @@
         messageId: string,
         changes: Partial<ParsedMessage>,
         removeFromList = false,
-    ) => {
-        messages = removeFromList
-            ? messages.filter(({id}) => id !== messageId)
-            : messages.map((message) => message.id === messageId ? {...message, ...changes} : message);
+    ): boolean => {
+        if (!removeFromList) {
+            messages = messages.map((message) =>
+                message.id === messageId ? {...message, ...changes} : message
+            );
+            return false;
+        }
+
+        const selectedMessage = getSelectedMessage();
+        const nextMessage = selectedMessage?.nextElementSibling as HTMLElement | null;
+        const hasNextMessage = Boolean(nextMessage?.classList.contains('email'));
+
+        if (hasNextMessage) {
+            nextMessage!.click();
+            nextMessage!.focus();
+            nextMessage!.scrollIntoView({block: 'nearest'});
+        }
+
+        messages = messages.filter(({id}) => id !== messageId);
+        return hasNextMessage;
     }
 
     const activateOnKey = (event: KeyboardEvent, action: () => void) => {
@@ -167,7 +183,7 @@
         <span>No messages found.</span>
     {:else}
         <div class="emailList" bind:this={emailListRoot}>
-            {#each messages as message}
+            {#each messages as message (message.id ?? message)}
                 <EmailListEntry
                     message={message}
                     {mailbox}

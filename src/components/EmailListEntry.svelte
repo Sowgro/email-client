@@ -16,7 +16,7 @@
             messageId: string,
             changes: Partial<ParsedMessage>,
             removeFromList?: boolean,
-        ) => void,
+        ) => boolean,
     } = $props();
     let ps: PanelService = getContext(Context.PANEL_SERVICE)
 

@@ -26,7 +26,7 @@
             messageId: string,
             changes: Partial<ParsedMessage>,
             removeFromList?: boolean,
-        ) => void,
+        ) => boolean,
     } = $props();
 
     let ps: PanelService = getContext(Context.PANEL_SERVICE)
@@ -60,9 +60,10 @@
 
         try {
             await action(message.id);
-            onMessageChanged?.(message.id, changes, removeFromList);
+            const selectedReplacement =
+                onMessageChanged?.(message.id, changes, removeFromList) ?? false;
 
-            if (removeFromList) {
+            if (removeFromList && !selectedReplacement) {
                 closePanel();
             }
             return true;
