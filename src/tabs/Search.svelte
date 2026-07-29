@@ -4,21 +4,10 @@
     import {Router} from "../services/Router.svelte";
     import {getContext} from "svelte";
     import {Context} from "../Context";
-    import type {ComponentEntry} from "../services/PanelService.svelte";
 
     const router: Router = getContext(Context.ROUTER)
 
     let query: string | undefined = $state()
-    let initPanel: ComponentEntry = {
-        component: EmailList,
-        props: {
-            id: 6,
-            get query() {
-                return query ?? ''
-            },
-            mailbox: "Search"
-        }
-    }
 
     $effect(() => {
         const parsedUrl = new URL(router.url, window.location.origin)
@@ -27,4 +16,10 @@
 
 </script>
 
-<PanelHost initPanels={[initPanel]}/>
+<PanelHost>
+    <EmailList
+            id={6}
+            query={query ?? ''}
+            mailbox="Search"
+    />
+</PanelHost>

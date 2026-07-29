@@ -1,5 +1,6 @@
 <script lang="ts">
-    import {type ComponentEntry, PanelService} from "../services/PanelService.svelte";
+    import {PanelService} from "../services/PanelService.svelte";
+    import type {Snippet} from "svelte";
     import {setContext} from "svelte";
     import {Context} from "../Context";
 
@@ -7,16 +8,16 @@
     setContext(Context.PANEL_SERVICE, ps)
 
     let {
-        initPanels = []
+        children
     }: {
-        initPanels: ComponentEntry[]
+        children: Snippet
     } = $props()
 
-    ps.panels = initPanels;
+    ps.panels = [children];
 </script>
 
 <div class="scroll" id="panels">
-    {#each ps.panels as { component: Component, props } (props.id)}
-        <Component {...props} />
+    {#each ps.panels as panel (panel)}
+        {@render panel()}
     {/each}
 </div>

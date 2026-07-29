@@ -8,12 +8,10 @@
     let {
         message,
         mailbox,
-        selected = false,
         onMessageChanged,
     }: {
         message: ParsedMessage,
         mailbox?: string,
-        selected?: boolean,
         onMessageChanged?: (
             messageId: string,
             changes: Partial<ParsedMessage>,
@@ -24,7 +22,7 @@
 
     const openPanel = () => {
         ps.panels = [ps.panels[0]]
-        ps.addPanel({component: EmailView, props: {message, mailbox, onMessageChanged}})
+        ps.addPanel(emailView)
     }
 
     const handleKeydown = (event: KeyboardEvent) => {
@@ -36,7 +34,11 @@
 
 </script>
 
-<div class:selected class="email" role="button" tabindex="0" onclick={openPanel} onkeydown={handleKeydown}>
+{#snippet emailView()}
+    <EmailView {message} {mailbox} {onMessageChanged}/>
+{/snippet}
+
+<div class:selected={ps.panels.includes(emailView)} class="email" role="button" tabindex="0" onclick={openPanel} onkeydown={handleKeydown}>
     <span class="sender">{message.sender ?? "Unknown sender"}</span>
     <div class="content">
         <span class="subject">{message.subject ?? "No subject"}</span>

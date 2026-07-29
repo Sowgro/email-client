@@ -1,9 +1,6 @@
 <script lang="ts">
     import EmailListEntry from "./EmailListEntry.svelte";
     import {formatError, listMessagePage, type ParsedMessage} from "../services/GmailService";
-    import {PanelService} from "../services/PanelService.svelte";
-    import {getContext} from "svelte";
-    import {Context} from "../Context";
 
     let {
         id,
@@ -21,10 +18,6 @@
     let nextPageToken: string | undefined = $state();
     let loading = $state(true);
     let error: unknown = $state();
-
-    let ps: PanelService = getContext(Context.PANEL_SERVICE)
-
-    let panelMountPoint: number = ps.panels.indexOf(ps.panels.find(p => p.props['id'] === id)!)
 
     const handleMessageChanged = (
         messageId: string,
@@ -95,7 +88,6 @@
                 <EmailListEntry
                     message={message}
                     {mailbox}
-                    selected={message.id === ps.panels.at(panelMountPoint + 1)?.props['message']?.['id'] }
                     onMessageChanged={handleMessageChanged}
                 />
             {/each}

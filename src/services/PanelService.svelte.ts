@@ -1,16 +1,11 @@
-import type {Component} from "svelte";
-
-interface ComponentEntry {
-    component: Component<any>;
-    props: Record<string, any>;
-}
+import type {Snippet} from "svelte";
 
 class PanelService {
-    public panels: ComponentEntry[] = $state([])
+    public panels: Snippet[] = $state([])
 
-    public addPanel(entry: ComponentEntry) {
-        this.panels = [...this.panels, entry]
+    public addPanel(snippet: Snippet) {
+        this.panels = [...this.panels, snippet]
     }
 }
 
-export {PanelService, type ComponentEntry}
+export {PanelService}
