@@ -114,4 +114,8 @@
             font-size: larger;
         }
     }
+
+    button {
+        margin-bottom: 12px;
+    }
 </style>

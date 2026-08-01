@@ -4,6 +4,7 @@
     import EmailListEntry from "./EmailListEntry.svelte";
     import {formatError, type MessagePage, type ParsedMessage} from "../services/GmailService";
     import {PanelService} from "../services/PanelService.svelte";
+    import {ToastService} from "../services/ToastService.svelte";
 
     let {
         getMessages
@@ -14,9 +15,10 @@
     let messages: ParsedMessage[] = $state([]);
     let nextPageToken: string | undefined = $state();
     let loading = $state(true);
-    let error: unknown = $state();
     let emailListRoot: HTMLDivElement | undefined = $state();
+
     const panelService: PanelService = getContext(Context.PANEL_SERVICE);
+    const toastService: ToastService = getContext(Context.TOAST_SERVICE)
 
     const getSelectedMessage = () =>
         emailListRoot?.querySelector<HTMLElement>('.email.selected');
@@ -105,12 +107,11 @@
 
     function loadMessages(pageToken?: string) {
         loading = true;
-        error = undefined;
         getMessages(pageToken).then(page => {
             messages = pageToken ? [...messages, ...page.messages] : page.messages;
             nextPageToken = page.nextPageToken;
         }).catch(ex => {
-            error = ex;
+            toastService.error(`Failed to load messages: ${formatError(ex)}`)
         }).finally(() => {
             loading = false;
         })
@@ -140,10 +141,6 @@
     </div>
     {#if !messages.length && loading}
         <span>Loading messages...</span>
-    {:else if error}
-        <span>Error loading messages!</span>
-        <code>{formatError(error)}</code>
-        <button onclick={() => loadMessages()}>Retry</button>
     {:else if messages.length === 0}
         <span>No messages found.</span>
     {:else}
@@ -156,7 +153,7 @@
             {/each}
         </div>
         {#if nextPageToken}
-            <div>
+            <div class="more">
                 <button onclick={() => loadMessages(nextPageToken)} disabled={loading}>
                     {loading ? 'Loading messages...' : 'Load more'}
                 </button>
@@ -164,3 +161,13 @@
         {/if}
     {/if}
 </div>
+
+<style>
+    span {
+        text-align: center;
+    }
+
+    .more button {
+        margin-top: 5px;
+    }
+</style>
