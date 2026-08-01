@@ -1,23 +1,20 @@
 <script lang="ts">
-    import {getContext} from "svelte";
+    import {getContext, onMount} from "svelte";
     import {Context} from "../Context";
     import EmailListEntry from "./EmailListEntry.svelte";
-    import {formatError, listMessagePage, type ParsedMessage} from "../services/GmailService";
+    import {formatError, type MessagePage, type ParsedMessage} from "../services/GmailService";
     import {PanelService} from "../services/PanelService.svelte";
 
     let {
-        query,
-        labelIds,
+        getMessages
     }: {
-        query?: string,
-        labelIds?: string[],
+        getMessages: (pageToken?: string) => Promise<MessagePage>
     } = $props()
 
     let messages: ParsedMessage[] = $state([]);
     let nextPageToken: string | undefined = $state();
     let loading = $state(true);
     let error: unknown = $state();
-    let loadGeneration = 0;
     let emailListRoot: HTMLDivElement | undefined = $state();
     const panelService: PanelService = getContext(Context.PANEL_SERVICE);
 
@@ -106,50 +103,22 @@
         }
     }
 
-    const loadMessages = async (
-        pageToken?: string,
-        generation = pageToken ? loadGeneration : ++loadGeneration,
-    ) => {
-        const requestedQuery = query;
-        const requestedLabelIds = labelIds;
-
+    function loadMessages(pageToken?: string) {
         loading = true;
         error = undefined;
-
-        if (!pageToken) {
-            messages = [];
-        }
-
-        try {
-            const page = await listMessagePage({
-                pageToken,
-                query: requestedQuery,
-                labelIds: requestedLabelIds,
-            });
-
-            if (generation !== loadGeneration) {
-                return;
-            }
-
+        getMessages(pageToken).then(page => {
             messages = pageToken ? [...messages, ...page.messages] : page.messages;
             nextPageToken = page.nextPageToken;
-        } catch (ex) {
-            if (generation !== loadGeneration) {
-                return;
-            }
+        }).catch(ex => {
             error = ex;
-        } finally {
-            if (generation === loadGeneration) {
-                loading = false;
-            }
-        }
+        }).finally(() => {
+            loading = false;
+        })
     }
 
-    $effect(() => {
-        query;
-        labelIds;
-        void loadMessages();
-    });
+    onMount(() => {
+        loadMessages();
+    })
 </script>
 
 <svelte:window onkeydown={handleWindowKeydown}/>
