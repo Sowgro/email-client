@@ -14,8 +14,6 @@
 
 <PanelHost>
     <EmailList
-            id={6}
             {query}
-            mailbox="Search"
     />
 </PanelHost>

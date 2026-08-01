@@ -5,8 +5,6 @@
 
 <PanelHost>
     <EmailList
-            id={1}
             query="in:archive"
-            mailbox="Done"
     />
 </PanelHost>

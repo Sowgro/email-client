@@ -6,13 +6,9 @@
     import {PanelService} from "../services/PanelService.svelte";
 
     let {
-        id,
-        mailbox,
         query,
         labelIds,
     }: {
-        id: number,
-        mailbox?: string,
         query?: string,
         labelIds?: string[],
     } = $props()
@@ -186,7 +182,6 @@
             {#each messages as message (message.id ?? message)}
                 <EmailListEntry
                     message={message}
-                    {mailbox}
                     onMessageChanged={handleMessageChanged}
                 />
             {/each}

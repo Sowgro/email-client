@@ -5,8 +5,6 @@
 
 <PanelHost>
     <EmailList
-            id={3}
             labelIds={['SENT']}
-            mailbox="Sent"
     />
 </PanelHost>

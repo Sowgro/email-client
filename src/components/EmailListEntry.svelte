@@ -7,11 +7,9 @@
 
     let {
         message,
-        mailbox,
         onMessageChanged,
     }: {
         message: ParsedMessage,
-        mailbox?: string,
         onMessageChanged?: (
             messageId: string,
             changes: Partial<ParsedMessage>,
@@ -34,7 +32,7 @@
 </script>
 
 {#snippet emailView()}
-    <EmailView {message} {mailbox} {onMessageChanged}/>
+    <EmailView {message} {onMessageChanged}/>
 {/snippet}
 
 <div class:selected={ps.panels.includes(emailView)} class="email" role="button" tabindex="0" onclick={openPanel} onkeydown={handleKeydown}>

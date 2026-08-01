@@ -6,22 +6,17 @@
     import ContextMenu from "./ContextMenu.svelte";
     import {
         downloadAttachment,
-        deleteMessageForever,
         formatError,
-        modifyMessageLabels,
-        moveMessageToTrash,
-        restoreMessageFromTrash,
         type ParsedAttachment,
         type ParsedMessage
     } from "../services/GmailService";
+    import {getRelevantActions, type MessageAction} from "../MessageActions";
 
     let {
         message,
-        mailbox,
         onMessageChanged,
     }: {
         message: ParsedMessage,
-        mailbox?: string,
         onMessageChanged?: (
             messageId: string,
             changes: Partial<ParsedMessage>,
@@ -33,37 +28,26 @@
     let toastService: ToastService = getContext(Context.TOAST_SERVICE)
 
     let downloadingAttachmentId: string | undefined = $state();
-    let activeAction: string | undefined = $state();
-    let starred = $state(message.starred);
-    let unread = $state(message.unread);
-
-    $effect(() => {
-        starred = message.starred;
-        unread = message.unread;
-    })
+    let activeAction: MessageAction | undefined = $state();
+    let actions: MessageAction[] = $derived(getRelevantActions(message));
 
     function closePanel() {
         ps.panels = ps.panels.slice(0, -1);
     }
 
-    const runAction = async (
-        name: string,
-        action: (messageId: string) => Promise<void>,
-        changes: Partial<ParsedMessage>,
-        removeFromList = false,
-    ): Promise<boolean> => {
+    const runAction = async (action: MessageAction): Promise<boolean> => {
         if (!message.id) {
             return false;
         }
 
-        activeAction = name;
+        activeAction = action;
 
         try {
-            await action(message.id);
+            await action.onAction(message.id);
             const selectedReplacement =
-                onMessageChanged?.(message.id, changes, removeFromList) ?? false;
+                onMessageChanged?.(message.id, action.changes ?? {}, action.removeFromList) ?? false;
 
-            if (removeFromList && !selectedReplacement) {
+            if (action.removeFromList && !selectedReplacement) {
                 closePanel();
             }
             return true;
@@ -74,67 +58,6 @@
             activeAction = undefined;
         }
     }
-
-    const toggleStar = async () => {
-        const nextStarred = !starred;
-        const succeeded = await runAction(
-            nextStarred ? 'star' : 'unstar',
-            (id) => modifyMessageLabels(
-                id,
-                nextStarred ? ['STARRED'] : [],
-                nextStarred ? [] : ['STARRED'],
-            ),
-            {starred: nextStarred},
-        );
-
-        if (succeeded) {
-            starred = nextStarred;
-        }
-    }
-
-    const archive = () => runAction(
-        'archive',
-        (id) => modifyMessageLabels(id, [], ['INBOX']),
-        {},
-        true,
-    )
-
-    const trash = () => runAction('trash', moveMessageToTrash, {}, true)
-
-    const restore = () => runAction('restore', restoreMessageFromTrash, {}, true)
-
-    const permanentlyDelete = () => {
-        if (!window.confirm('Permanently delete this message? This cannot be undone.')) {
-            return
-        }
-
-        return runAction('delete forever', deleteMessageForever, {}, true)
-    }
-
-    const moveToInbox = () => runAction(
-        'move to inbox',
-        (id) => modifyMessageLabels(id, ['INBOX']),
-        {},
-        true,
-    )
-
-    const markUnread = async () => {
-        const succeeded = await runAction(
-            'unread',
-            (id) => modifyMessageLabels(id, ['UNREAD']),
-            {unread: true},
-        );
-        if (succeeded) {
-            unread = true;
-        }
-    }
-
-    const markSpam = () => runAction(
-        'spam',
-        (id) => modifyMessageLabels(id, ['SPAM'], ['INBOX']),
-        {},
-        true,
-    )
 
     const handleAttachmentDownload = async (attachment: ParsedAttachment) => {
         downloadingAttachmentId = attachment.id;
@@ -175,77 +98,30 @@
                 </button>
             </div>
             <div class="right">
-                <ContextMenu disabled={Boolean(activeAction)}>
-                    <button role="menuitem" disabled={unread || Boolean(activeAction)} onclick={markUnread}>
-                        <span class="icon">mark_email_unread</span>
-                        Mark as unread
+                {#each actions.slice(0, 3) as action (action.label)}
+                    <button
+                        class:active={action.isActive}
+                        class="icon-button"
+                        aria-label={action.label}
+                        title={action.label}
+                        disabled={!message.id || Boolean(activeAction)}
+                        onclick={() => runAction(action)}
+                    >
+                        <span class="icon">{action.icon}</span>
                     </button>
-                    <button role="menuitem" disabled={Boolean(activeAction)} onclick={markSpam}>
-                        <span class="icon">report</span>
-                        Mark as spam
-                    </button>
+                {/each}
+                <ContextMenu disabled={!message.id || Boolean(activeAction)}>
+                    {#each actions.slice(3) as action (action.label)}
+                        <button
+                                role="menuitem"
+                                disabled={!message.id || Boolean(activeAction)}
+                                onclick={() => runAction(action)}
+                        >
+                            <span class="icon">{action.icon}</span>
+                            {action.label}
+                        </button>
+                    {/each}
                 </ContextMenu>
-                <button
-                    class:active={starred}
-                    class="icon-button"
-                    aria-label={starred ? 'Unpin message' : 'Pin message'}
-                    title={starred ? 'Unpin message' : 'Pin message'}
-                    disabled={!message.id || Boolean(activeAction)}
-                    onclick={toggleStar}
-                >
-                    <span class="icon">push_pin</span>
-                </button>
-                {#if mailbox === 'Trash'}
-                    <button
-                        class="icon-button"
-                        aria-label="Delete forever"
-                        title="Delete forever"
-                        disabled={!message.id || Boolean(activeAction)}
-                        onclick={permanentlyDelete}
-                    >
-                        <span class="icon">delete_forever</span>
-                    </button>
-                    <button
-                        class="icon-button"
-                        aria-label="Restore from trash"
-                        title="Restore from trash"
-                        disabled={!message.id || Boolean(activeAction)}
-                        onclick={restore}
-                    >
-                        <span class="icon">restore_from_trash</span>
-                    </button>
-                {:else}
-                    <button
-                        class="icon-button"
-                        aria-label="Move to trash"
-                        title="Move to trash"
-                        disabled={!message.id || Boolean(activeAction)}
-                        onclick={trash}
-                    >
-                        <span class="icon">delete</span>
-                    </button>
-                    {#if mailbox === 'Done'}
-                        <button
-                            class="icon-button"
-                            aria-label="Move to inbox"
-                            title="Move to inbox"
-                            disabled={!message.id || Boolean(activeAction)}
-                            onclick={moveToInbox}
-                        >
-                            <span class="icon">move_to_inbox</span>
-                        </button>
-                    {:else}
-                        <button
-                            class="icon-button"
-                            aria-label="Done (archive)"
-                            title="Done (archive)"
-                            disabled={!message.id || Boolean(activeAction)}
-                            onclick={archive}
-                        >
-                            <span class="icon">check</span>
-                        </button>
-                    {/if}
-                {/if}
             </div>
         </div>
         <span class="subject">{message.subject}</span>
@@ -296,6 +172,7 @@
 
     .action-bar .right {
         align-items: center;
+        flex-direction: row-reverse;
     }
 
     .icon-button.active {

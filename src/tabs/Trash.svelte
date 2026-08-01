@@ -5,8 +5,6 @@
 
 <PanelHost>
     <EmailList
-            id={4}
             labelIds={['TRASH']}
-            mailbox="Trash"
     />
 </PanelHost>
