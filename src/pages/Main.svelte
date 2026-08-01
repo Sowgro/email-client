@@ -32,7 +32,11 @@
 
     $effect(() => {
         let parsedUrl = new URL(router.url, window.location.origin)
-        activeRoute = routes.find((r) => r.path === parsedUrl.pathname)
+        if (parsedUrl.pathname === '/') {
+            router.navigate('/inbox')
+        } else {
+            activeRoute = routes.find((r) => r.path === parsedUrl.pathname)
+        }
     })
 </script>
 
@@ -42,6 +46,8 @@
     <div id="main">
         {#if activeRoute}
             <activeRoute.component/>
+        {:else}
+            <span>Unknown route</span>
         {/if}
     </div>
 </div>
