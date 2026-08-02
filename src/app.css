@@ -137,18 +137,18 @@ input[type=text] {
   justify-content: space-between;
 }
 
-.action-bar h2 {
-  margin: 0;
-}
-
-.action-bar .icon {
-  font-size: larger;
-  padding: 2px;
-}
-
-.action-bar > div {
+.action-group {
   display: flex;
   gap: 10px;
+
+  .icon {
+    font-size: larger;
+    padding: 2px;
+  }
+
+  &.right {
+    flex-direction: row-reverse;
+  }
 }
 
 /* bundle */

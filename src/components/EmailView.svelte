@@ -28,24 +28,16 @@
     let toastService: ToastService = getContext(Context.TOAST_SERVICE)
 
     let downloadingAttachmentId: string | undefined = $state();
-    let activeAction: MessageAction | undefined = $state();
     let actions: MessageAction[] = $derived(getRelevantActions(message));
 
     function closePanel() {
         ps.panels = ps.panels.slice(0, -1);
     }
 
-    const runAction = async (action: MessageAction): Promise<boolean> => {
-        if (!message.id) {
-            return false;
-        }
-
-        activeAction = action;
-
-        try {
-            await action.onAction(message.id);
+    const runAction = async (action: MessageAction) =>
+        action.onAction(message.id!).then(() => {
             const selectedReplacement =
-                onMessageChanged?.(message.id, action.changes ?? {}, action.removeFromList) ?? false;
+                onMessageChanged?.(message.id!, action.changes ?? {}, action.removeFromList) ?? false;
 
             if (action.removeFromList && !selectedReplacement) {
                 closePanel();
@@ -58,18 +50,12 @@
                     fn: () => {/* TODO */}
                 }
             })
-
-            return true;
-        } catch (ex) {
+        }).catch(ex => {
             toastService.error({
                 message: `An error occurred while completing action ${action.label}`,
                 error: formatError(ex)
             })
-            return false;
-        } finally {
-            activeAction = undefined;
-        }
-    }
+        })
 
     const handleAttachmentDownload = async (attachment: ParsedAttachment) => {
         downloadingAttachmentId = attachment.id;
@@ -103,7 +89,7 @@
 <div class="panel">
     <div class="emailView">
         <div class="action-bar">
-            <div class="left">
+            <div class="action-group left">
                 <button
                     class="icon-button"
                     tabindex="0"
@@ -112,24 +98,22 @@
                     <span class="icon">keyboard_arrow_right</span>
                 </button>
             </div>
-            <div class="right">
+            <div class="action-group right">
                 {#each actions.slice(0, 3) as action (action.label)}
                     <button
                         class:active={action.isActive}
                         class="icon-button"
                         aria-label={action.label}
                         title={action.label}
-                        disabled={!message.id || Boolean(activeAction)}
                         onclick={() => runAction(action)}
                     >
                         <span class="icon">{action.icon}</span>
                     </button>
                 {/each}
-                <ContextMenu disabled={!message.id || Boolean(activeAction)}>
+                <ContextMenu>
                     {#each actions.slice(3) as action (action.label)}
                         <button
                                 role="menuitem"
-                                disabled={!message.id || Boolean(activeAction)}
                                 onclick={() => runAction(action)}
                         >
                             <span class="icon">{action.icon}</span>

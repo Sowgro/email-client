@@ -133,8 +133,8 @@
 
 <div class="panel">
     <div class="action-bar">
-        <div></div>
-        <div>
+        <div class="action-group"></div>
+        <div class="action-group">
             <button
                     class="icon-button"
                     disabled={loading}
