@@ -1,6 +1,6 @@
 <script lang="ts">
     import {getContext} from "svelte";
-    import type {ToastService} from "../services/ToastService.svelte";
+    import type {ToastContent, ToastService} from "../services/ToastService.svelte";
     import {Context} from "../Context";
     import {Router} from "../services/Router.svelte";
 
@@ -26,7 +26,7 @@
 
 <div id="sidebar">
         <div id="top">
-            <button onclick={() => toastService.show("Composition and reply features are not yet implemented.")}>
+            <button onclick={() => toastService.info({message: "Composition and reply features are not yet implemented."})}>
                 <span class="icon">edit</span>
                 <span class="label">Compose</span>
             </button>

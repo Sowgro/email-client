@@ -1,17 +1,30 @@
 export type ToastKind = 'info' | 'success' | 'error'
 
-export interface Toast {
-    id: number
+export interface ToastContent {
     message: string
+    error?: string;
+    action?: {
+        label: string
+        fn: () => void,
+    }
+}
+
+export interface ToastEntry {
+    id: number
     kind: ToastKind
+    content: ToastContent
 }
 
 export class ToastService {
-    public toasts: Toast[] = $state([])
+    public toasts: ToastEntry[] = $state([])
     private nextId = 0
 
-    public show(message: string, kind: ToastKind = 'info', duration = 5000) {
-        const toast = {id: ++this.nextId, message, kind}
+    public info = (content: ToastContent) => this.show('info', content)
+    public error = (content: ToastContent) => this.show('error', content, 8000)
+    public success = (content: ToastContent) => this.show('success', content)
+
+    public show(kind: ToastKind, content: ToastContent, duration = 5000) {
+        const toast = {id: ++this.nextId, kind, content}
         this.toasts = [...this.toasts, toast]
 
         if (duration > 0) {
@@ -19,14 +32,6 @@ export class ToastService {
         }
 
         return toast.id
-    }
-
-    public success(message: string) {
-        return this.show(message, 'success')
-    }
-
-    public error(message: string) {
-        return this.show(message, 'error', 8000)
     }
 
     public dismiss(id: number) {

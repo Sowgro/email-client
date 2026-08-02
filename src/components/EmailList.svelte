@@ -111,7 +111,14 @@
             messages = pageToken ? [...messages, ...page.messages] : page.messages;
             nextPageToken = page.nextPageToken;
         }).catch(ex => {
-            toastService.error(`Failed to load messages: ${formatError(ex)}`)
+            toastService.error({
+                message: `Failed to load messages`,
+                error: formatError(ex),
+                action: {
+                    label: "Retry",
+                    fn: () => loadMessages(pageToken)
+                }
+            });
         }).finally(() => {
             loading = false;
         })

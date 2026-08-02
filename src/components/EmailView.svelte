@@ -50,9 +50,21 @@
             if (action.removeFromList && !selectedReplacement) {
                 closePanel();
             }
+
+            toastService.success({
+                message: `Success: ${action.label}`,
+                action: {
+                    label: "Undo",
+                    fn: () => {/* TODO */}
+                }
+            })
+
             return true;
         } catch (ex) {
-            toastService.error(formatError(ex));
+            toastService.error({
+                message: `An error occurred while completing action ${action.label}`,
+                error: formatError(ex)
+            })
             return false;
         } finally {
             activeAction = undefined;
@@ -65,7 +77,10 @@
         try {
             await downloadAttachment(message, attachment);
         } catch (ex) {
-            toastService.error(formatError(ex));
+            toastService.error({
+                message: "An error occurred while downloading the attachment",
+                error: formatError(ex)
+            })
         } finally {
             downloadingAttachmentId = undefined;
         }
