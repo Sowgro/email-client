@@ -181,4 +181,8 @@ iframe.content {
   :hover {
     background-color: rgba(0, 0, 0, 0.2);
   }
+
+  &.active {
+    color: #e083ff;
+  }
 }

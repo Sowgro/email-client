@@ -174,10 +174,6 @@
         flex-direction: row-reverse;
     }
 
-    .icon-button.active {
-        color: #e083ff;
-    }
-
     .subject {
         font-size: larger;
     }
