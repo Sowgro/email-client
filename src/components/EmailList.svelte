@@ -5,17 +5,31 @@
     import {formatError, type MessagePage, type ParsedMessage} from "../services/GmailService";
     import {PanelService} from "../services/PanelService.svelte";
     import {ToastService} from "../services/ToastService.svelte";
+    import {type MessageSection, sortDate, sortPinned} from "../MessageSorter";
 
     let {
-        getMessages
+        getMessages,
+        groupByDate = false,
+        groupPins = false,
     }: {
-        getMessages: (pageToken?: string) => Promise<MessagePage>
+        getMessages: (pageToken?: string) => Promise<MessagePage>,
+        groupByDate?: boolean,
+        groupPins?: boolean,
     } = $props()
 
     let messages: ParsedMessage[] = $state([]);
     let nextPageToken: string | undefined = $state();
     let loading = $state(true);
     let emailListRoot: HTMLDivElement | undefined = $state();
+
+    const getMessageSections = (items: ParsedMessage[]): MessageSection[] => {
+        let r: MessageSection[] = [{label: null, messages: items}];
+        groupPins && r.push(...sortPinned(r.pop()!.messages));
+        groupByDate && r.push(...sortDate(r.pop()!.messages));
+        return r.filter(s => s.messages.length);
+    };
+
+    let messageSections = $derived(getMessageSections(messages));
 
     const panelService: PanelService = getContext(Context.PANEL_SERVICE);
     const toastService: ToastService = getContext(Context.TOAST_SERVICE)
@@ -56,13 +70,14 @@
             return;
         }
 
-        const nextMessage = (
-            event.key === 'ArrowUp'
-                ? selectedMessage?.previousElementSibling
-                : selectedMessage?.nextElementSibling
-        ) as HTMLElement | null;
+        const listedMessages = Array.from(
+            emailListRoot?.querySelectorAll<HTMLElement>('.email') ?? []
+        );
+        const selectedIndex = selectedMessage ? listedMessages.indexOf(selectedMessage) : -1;
+        const nextIndex = selectedIndex + (event.key === 'ArrowUp' ? -1 : 1);
+        const nextMessage = listedMessages[nextIndex];
 
-        if (!nextMessage?.classList.contains('email')) {
+        if (!nextMessage) {
             return;
         }
 
@@ -85,8 +100,12 @@
         }
 
         const selectedMessage = getSelectedMessage();
-        const nextMessage = selectedMessage?.nextElementSibling as HTMLElement | null;
-        const hasNextMessage = Boolean(nextMessage?.classList.contains('email'));
+        const listedMessages = Array.from(
+            emailListRoot?.querySelectorAll<HTMLElement>('.email') ?? []
+        );
+        const selectedIndex = selectedMessage ? listedMessages.indexOf(selectedMessage) : -1;
+        const nextMessage = listedMessages[selectedIndex + 1];
+        const hasNextMessage = Boolean(nextMessage);
 
         if (hasNextMessage) {
             nextMessage!.click();
@@ -152,11 +171,16 @@
         <span>No messages found.</span>
     {:else}
         <div class="emailList" bind:this={emailListRoot}>
-            {#each messages as message (message.id ?? message)}
-                <EmailListEntry
-                    message={message}
-                    onMessageChanged={handleMessageChanged}
-                />
+            {#each messageSections as section (section.label)}
+                {#if section.label}
+                    <h2 class="section-heading">{section.label}</h2>
+                {/if}
+                {#each section.messages as message (message.id ?? message)}
+                    <EmailListEntry
+                        message={message}
+                        onMessageChanged={handleMessageChanged}
+                    />
+                {/each}
             {/each}
         </div>
         {#if nextPageToken}
@@ -176,5 +200,18 @@
 
     .more button {
         margin-top: 5px;
+    }
+
+    .section-heading {
+        color: rgba(255, 255, 255, 0.62);
+        font-size: 0.78rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        margin: 18px 7px 6px;
+        text-transform: uppercase;
+    }
+
+    .section-heading:first-child {
+        margin-top: 8px;
     }
 </style>

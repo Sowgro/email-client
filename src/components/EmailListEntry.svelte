@@ -45,7 +45,7 @@
         }
     }
 
-    const actions = getRelevantActions(message);
+    const actions = $derived(getRelevantActions(message));
 
     const runAction = (action: MessageAction) =>
         action.onAction(message.id!).then(() => {

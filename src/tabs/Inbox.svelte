@@ -10,5 +10,5 @@
 </script>
 
 <PanelHost>
-    <EmailList {getMessages}/>
+    <EmailList {getMessages} groupByDate groupPins/>
 </PanelHost>
