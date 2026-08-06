@@ -10,6 +10,7 @@
     let {
         message,
         onMessageChanged,
+        onBundleDrop,
     }: {
         message: ParsedMessage,
         onMessageChanged?: (
@@ -17,13 +18,16 @@
             changes: Partial<ParsedMessage>,
             removeFromList?: boolean,
         ) => boolean,
+        onBundleDrop?: (sourceMessageId: string, target: ParsedMessage) => void,
     } = $props();
 
     let panelService: PanelService = getContext(Context.PANEL_SERVICE)
     let toastService: ToastService = getContext(Context.TOAST_SERVICE)
+    let emailRoot: HTMLDivElement | undefined = $state();
+    let dragOver = $state(false);
 
     const openPanel = () => {
-        panelService.panels = [panelService.panels[0], emailView]
+        panelService.openNextTo(emailRoot, emailView);
     }
 
     const handleClick = (event: MouseEvent) => {
@@ -46,6 +50,42 @@
     }
 
     const actions = $derived(getRelevantActions(message));
+
+    const handleDragStart = (event: DragEvent) => {
+        if (!message.id || !event.dataTransfer) {
+            event.preventDefault();
+            return;
+        }
+
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('application/x-fettuccemail-message', message.id);
+    };
+
+    const handleDragOver = (event: DragEvent) => {
+        if (
+            !onBundleDrop
+            || !event.dataTransfer?.types.includes('application/x-fettuccemail-message')
+        ) {
+            return;
+        }
+
+        event.preventDefault();
+        if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = 'move';
+        }
+        dragOver = true;
+    };
+
+    const handleDrop = (event: DragEvent) => {
+        dragOver = false;
+        const sourceMessageId = event.dataTransfer?.getData('application/x-fettuccemail-message');
+        if (!sourceMessageId || sourceMessageId === message.id) {
+            return;
+        }
+
+        event.preventDefault();
+        onBundleDrop?.(sourceMessageId, message);
+    };
 
     const runAction = (action: MessageAction) =>
         action.onAction(message.id!).then(() => {
@@ -76,7 +116,21 @@
     <EmailView {message} {onMessageChanged}/>
 {/snippet}
 
-<div class:selected={panelService.panels.includes(emailView)} class="email" role="button" tabindex="0" onclick={handleClick} onkeydown={handleKeydown}>
+<div
+    bind:this={emailRoot}
+    class:selected={panelService.panels.includes(emailView)}
+    class:drag-over={dragOver}
+    class="email"
+    role="button"
+    tabindex="0"
+    draggable={Boolean(onBundleDrop) && Boolean(message.id)}
+    onclick={handleClick}
+    onkeydown={handleKeydown}
+    ondragstart={handleDragStart}
+    ondragover={handleDragOver}
+    ondragleave={() => dragOver = false}
+    ondrop={handleDrop}
+>
     <div class="action-group left">
         <input type="checkbox"/>
     </div>
@@ -132,6 +186,11 @@
 
     .email.selected:hover {
         background-color: rgba(112, 67, 128, 0.1);
+    }
+
+    .email.drag-over {
+        background-color: rgba(224, 131, 255, 0.18);
+        box-shadow: inset 0 0 0 2px #e083ff;
     }
 
     .email:hover {

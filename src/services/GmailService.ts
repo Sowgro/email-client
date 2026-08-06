@@ -10,6 +10,15 @@ export interface ParsedMessage {
     starred: boolean;
     unread: boolean;
     attachments: ParsedAttachment[];
+    bundleLabelId?: string;
+    bundleTitle?: string;
+    bundleSummary?: BundleSummary;
+}
+
+export interface BundleSummary {
+    count: number;
+    hasMore: boolean;
+    senders: string[];
 }
 
 export interface ParsedAttachment {
@@ -28,6 +37,15 @@ export interface MessageListOptions {
     pageToken?: string;
     query?: string;
     labelIds?: string[];
+    includeSpamTrash?: boolean;
+    includeBundleSummaries?: boolean;
+}
+
+export interface BundleLabel {
+    id: string;
+    name: string;
+    key: string;
+    title?: string;
 }
 
 export class GmailApiError extends Error {
@@ -43,19 +61,27 @@ export class GmailApiError extends Error {
 }
 
 const metadataHeaders = ['From', 'Subject', 'Date'];
+const BUNDLE_LABEL_PREFIX = 'Fettuccemail/Bundles/';
+const BUNDLE_TITLE_SEPARATOR = '::';
+const MAX_BUNDLE_LABEL_LENGTH = 225;
+const BUNDLE_SUMMARY_LIMIT = 25;
 
 export async function listMessagePage(options: MessageListOptions = {}): Promise<MessagePage> {
     try {
-        const listResponse = await gapi.client.gmail.users.messages.list({
-            userId: 'me',
-            maxResults: 25,
-            pageToken: options.pageToken,
-            q: options.query || undefined,
-            labelIds: options.labelIds,
-        });
+        const [listResponse, bundleLabels] = await Promise.all([
+            gapi.client.gmail.users.messages.list({
+                userId: 'me',
+                maxResults: 25,
+                pageToken: options.pageToken,
+                q: options.query || undefined,
+                labelIds: options.labelIds,
+                includeSpamTrash: options.includeSpamTrash,
+            }),
+            listBundleLabels(),
+        ]);
 
         const messageRefs = listResponse.result.messages ?? [];
-        const messages = await Promise.all(messageRefs.filter((message) => message.id).map(async (message) => {
+        let messages = await Promise.all(messageRefs.filter((message) => message.id).map(async (message) => {
             const fullMessage = await gapi.client.gmail.users.messages.get({
                 userId: 'me',
                 id: message.id!,
@@ -63,8 +89,18 @@ export async function listMessagePage(options: MessageListOptions = {}): Promise
                 metadataHeaders,
             });
 
-            return parseMessage(fullMessage.result);
+            return parseMessage(fullMessage.result, bundleLabels);
         }));
+
+        if (options.includeBundleSummaries !== false) {
+            const summaries = await loadBundleSummaries(messages);
+            messages = messages.map((message) => ({
+                ...message,
+                bundleSummary: message.bundleLabelId
+                    ? summaries.get(message.bundleLabelId)
+                    : undefined,
+            }));
+        }
 
         return {
             messages,
@@ -75,12 +111,60 @@ export async function listMessagePage(options: MessageListOptions = {}): Promise
     }
 }
 
-export function parseMessage(message: gapi.client.gmail.Message): ParsedMessage {
+async function loadBundleSummaries(messages: ParsedMessage[]): Promise<Map<string, BundleSummary>> {
+    const bundleLabelIds = new Set(
+        messages.flatMap((message) => message.bundleLabelId ? [message.bundleLabelId] : [])
+    );
+    const knownMessages = new Map(
+        messages.flatMap((message) => message.id ? [[message.id, message] as const] : [])
+    );
+    const summaries = await Promise.all(
+        [...bundleLabelIds].map(async (bundleLabelId) => {
+            const response = await gapi.client.gmail.users.messages.list({
+                userId: 'me',
+                maxResults: BUNDLE_SUMMARY_LIMIT,
+                labelIds: [bundleLabelId],
+                includeSpamTrash: true,
+            });
+            const messageRefs = response.result.messages?.filter((message) => message.id) ?? [];
+            const senders = await Promise.all(messageRefs.map(async ({id}) => {
+                const knownMessage = knownMessages.get(id!);
+                if (knownMessage) {
+                    return knownMessage.sender ?? 'Unknown sender';
+                }
+
+                const messageResponse = await gapi.client.gmail.users.messages.get({
+                    userId: 'me',
+                    id: id!,
+                    format: 'metadata',
+                    metadataHeaders: ['From'],
+                });
+                return getHeader(messageResponse.result, 'From') ?? 'Unknown sender';
+            }));
+
+            return [bundleLabelId, {
+                count: messageRefs.length,
+                hasMore: Boolean(response.result.nextPageToken),
+                senders,
+            }] as const;
+        })
+    );
+
+    return new Map(summaries);
+}
+
+export function parseMessage(
+    message: gapi.client.gmail.Message,
+    bundleLabels: ReadonlyMap<string, BundleLabel> = new Map(),
+): ParsedMessage {
     const htmlBodies: string[] = [];
     const textBodies: string[] = [];
     const attachments: ParsedAttachment[] = [];
 
     collectMessageParts(message.payload, htmlBodies, textBodies, attachments);
+
+    const bundleLabelId = message.labelIds?.find((labelId) => bundleLabels.has(labelId));
+    const bundleLabel = bundleLabelId ? bundleLabels.get(bundleLabelId) : undefined;
 
     return {
         id: message.id,
@@ -94,7 +178,140 @@ export function parseMessage(message: gapi.client.gmail.Message): ParsedMessage 
         starred: message.labelIds?.includes('STARRED') ?? false,
         unread: message.labelIds?.includes('UNREAD') ?? false,
         attachments,
+        bundleLabelId,
+        bundleTitle: bundleLabel?.title,
     };
+}
+
+export async function createBundle(
+    source: ParsedMessage,
+    target: ParsedMessage,
+    title?: string,
+): Promise<void> {
+    if (!source.id || !target.id) {
+        throw new GmailApiError(new Error('Both messages must have an ID to create a bundle.'));
+    }
+
+    if (source.id === target.id) {
+        throw new GmailApiError(new Error('A message cannot be bundled with itself.'));
+    }
+
+    if (source.bundleLabelId) {
+        throw new GmailApiError(new Error('Only individual messages can be dragged into a bundle.'));
+    }
+
+    if (target.bundleLabelId) {
+        await modifyMessageLabels(source.id, [target.bundleLabelId]);
+        return;
+    }
+
+    const labelName = buildBundleLabelName(crypto.randomUUID(), title);
+    let createdLabelId: string | undefined;
+
+    try {
+        const response = await gapi.client.gmail.users.labels.create({
+            userId: 'me',
+            resource: {
+                name: labelName,
+                labelListVisibility: 'labelHide',
+                messageListVisibility: 'hide',
+            },
+        });
+
+        if (!response.result.id || !response.result.name) {
+            throw new Error('Gmail did not return the new bundle label.');
+        }
+
+        createdLabelId = response.result.id;
+        await gapi.client.gmail.users.messages.batchModify({
+            userId: 'me',
+            resource: {
+                ids: [source.id, target.id],
+                addLabelIds: [createdLabelId],
+            },
+        });
+        return;
+    } catch (error) {
+        if (createdLabelId) {
+            try {
+                await gapi.client.gmail.users.labels.delete({userId: 'me', id: createdLabelId});
+            } catch {
+                // The unused label is harmless if Gmail rejects cleanup.
+            }
+        }
+        throw new GmailApiError(error);
+    }
+}
+
+export async function renameBundle(bundleLabelId: string, title: string): Promise<void> {
+    try {
+        const bundleLabel = (await listBundleLabels()).get(bundleLabelId);
+        if (!bundleLabel) {
+            throw new Error('The bundle label no longer exists.');
+        }
+
+        await gapi.client.gmail.users.labels.patch({
+            userId: 'me',
+            id: bundleLabelId,
+            resource: {name: buildBundleLabelName(bundleLabel.key, title)},
+        });
+    } catch (error) {
+        throw new GmailApiError(error);
+    }
+}
+
+async function listBundleLabels(): Promise<Map<string, BundleLabel>> {
+    try {
+        const response = await gapi.client.gmail.users.labels.list({userId: 'me'});
+        const labels = new Map<string, BundleLabel>();
+
+        for (const label of response.result.labels ?? []) {
+            if (label.id && label.name?.startsWith(BUNDLE_LABEL_PREFIX)) {
+                const parsedLabel = parseBundleLabel(label.id, label.name);
+                if (parsedLabel) {
+                    labels.set(label.id, parsedLabel);
+                }
+            }
+        }
+
+        return labels;
+    } catch (error) {
+        throw new GmailApiError(error);
+    }
+}
+
+function buildBundleLabelName(key: string, title?: string): string {
+    const normalizedTitle = title?.trim();
+    if (!normalizedTitle) {
+        throw new Error('Bundle names cannot be empty.');
+    }
+
+    const name = `${BUNDLE_LABEL_PREFIX}${key}${BUNDLE_TITLE_SEPARATOR}${encodeURIComponent(normalizedTitle)}`;
+    if (name.length > MAX_BUNDLE_LABEL_LENGTH) {
+        throw new Error('Bundle name is too long.');
+    }
+
+    return name;
+}
+
+function parseBundleLabel(id: string, name: string): BundleLabel | undefined {
+    const value = name.slice(BUNDLE_LABEL_PREFIX.length);
+    const separatorIndex = value.indexOf(BUNDLE_TITLE_SEPARATOR);
+    const key = separatorIndex === -1 ? value : value.slice(0, separatorIndex);
+    if (!key) {
+        return undefined;
+    }
+
+    if (separatorIndex === -1) {
+        return {id, name, key};
+    }
+
+    try {
+        const title = decodeURIComponent(value.slice(separatorIndex + BUNDLE_TITLE_SEPARATOR.length)).trim();
+        return {id, name, key, title: title || undefined};
+    } catch {
+        return {id, name, key};
+    }
 }
 
 export async function modifyMessageLabels(
