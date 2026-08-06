@@ -101,12 +101,15 @@
     ondrop={handleDrop}
 >
     <div class="action-group left">
-        <input
-            type="checkbox"
-            aria-label="Select bundle"
-            {checked}
-            onchange={(event) => onCheckedChange?.(event.currentTarget.checked)}
-        />
+        <button
+                class="icon-button section-select"
+                class:checked={checked}
+                onclick={() => onCheckedChange?.(!checked)}
+        >
+                                <span class="icon">
+                                    {checked ? 'check_box': 'check_box_outline_blank'}
+                                </span>
+        </button>
     </div>
     <span class="sender">{representative.bundleTitle ?? 'Untitled bundle'} <span class="count">({count})</span></span>
     <div class="content">{senders}</div>
@@ -209,5 +212,9 @@
 
     .count {
         color: rgba(239, 239, 239, 0.7);
+    }
+
+    .section-select.checked {
+        color: #e083ff;
     }
 </style>

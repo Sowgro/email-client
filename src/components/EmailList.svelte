@@ -465,6 +465,7 @@
                     <h2 class="section-heading">
                         <span class="section-label">
                             <button
+                                class:selection-visible={selectionActive}
                                 class="icon-button section-select"
                                 aria-label={`Select all in ${section.label}`}
                                 title={`Select all in ${section.label}`}
@@ -570,6 +571,7 @@
     }
 
     .section-select {
+        display: none;
         color: rgba(255, 255, 255, 0.62);
     }
 
@@ -581,6 +583,18 @@
 
     .section-done {
         color: rgba(255, 255, 255, 0.62);
+    }
+
+    .section-heading:hover .section-select {
+        display: flex;
+    }
+
+    .section-select.selection-visible {
+        display: flex;
+    }
+
+    .section-heading .icon-button {
+        font-size: 19.2px;
     }
 
 </style>

@@ -145,12 +145,15 @@
     ondrop={handleDrop}
 >
     <div class="action-group left">
-        <input
-            type="checkbox"
-            aria-label="Select email"
-            {checked}
-            onchange={(event) => onCheckedChange?.(event.currentTarget.checked)}
-        />
+        <button
+                class="icon-button section-select"
+                class:checked={checked}
+                onclick={() => onCheckedChange?.(!checked)}
+        >
+                                <span class="icon">
+                                    {checked ? 'check_box': 'check_box_outline_blank'}
+                                </span>
+        </button>
     </div>
     <span class="sender">{message.sender ?? "Unknown sender"}</span>
     <div class="content">
@@ -242,5 +245,9 @@
 
     .email.selection-visible .action-group.left {
         display: flex;
+    }
+
+    .section-select.checked {
+        color: #e083ff;
     }
 </style>
