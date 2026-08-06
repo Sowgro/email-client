@@ -5,14 +5,16 @@
     import BundleListEntry from "./BundleListEntry.svelte";
     import EmailList from "./EmailList.svelte";
     import {
-        createBundle,
         formatError,
-        listAllMessageIds,
         listMessagePage,
-        renameBundle,
         type MessagePage,
         type ParsedMessage,
     } from "../services/GmailService";
+    import {
+        createBundle,
+        listAllMessageIds,
+        renameBundle,
+    } from "../services/BundleService";
     import {PanelService} from "../services/PanelService.svelte";
     import {ToastService} from "../services/ToastService.svelte";
     import {type MessageSection, sortDate, sortPinned} from "../MessageSorter";
