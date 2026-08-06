@@ -7,6 +7,7 @@
     import {
         createBundle,
         formatError,
+        listAllMessageIds,
         listMessagePage,
         renameBundle,
         type MessagePage,
@@ -15,6 +16,11 @@
     import {PanelService} from "../services/PanelService.svelte";
     import {ToastService} from "../services/ToastService.svelte";
     import {type MessageSection, sortDate, sortPinned} from "../MessageSorter";
+    import {
+        executeMessageAction,
+        getCommonActions,
+        type MessageAction,
+    } from "../MessageActions";
 
     let {
         getMessages,
@@ -37,6 +43,8 @@
     let emailListRoot: HTMLDivElement | undefined = $state();
     let selectedBundleLabelId: string | undefined = $state();
     let selectedBundleTitle: string | undefined = $state();
+    let selectedItemKeys: Set<string> = $state(new Set());
+    let actionBusy = $state(false);
 
     const getVisibleMessages = (items: ParsedMessage[]) => {
         if (!parseBundles) {
@@ -63,7 +71,35 @@
         return r.filter(s => s.messages.length);
     };
 
-    let messageSections = $derived(getMessageSections(getVisibleMessages(messages)));
+    let visibleMessages = $derived(getVisibleMessages(messages));
+    let messageSections = $derived(getMessageSections(visibleMessages));
+
+    const getItemKey = (message: ParsedMessage) =>
+        parseBundles && message.bundleLabelId
+            ? `bundle:${message.bundleLabelId}`
+            : `message:${message.id}`;
+
+    const getItemActionMessages = (message: ParsedMessage) =>
+        parseBundles && message.bundleLabelId
+            ? (message.bundleSummary?.messages ?? [message])
+            : [message];
+
+    const getSelectedItems = () =>
+        visibleMessages.filter((message) => selectedItemKeys.has(getItemKey(message)));
+
+    const getSelectedCommonActions = () =>
+        getCommonActions(getSelectedItems().flatMap(getItemActionMessages));
+
+    let selectedCommonActions = $derived(getSelectedCommonActions());
+    let selectionActive = $derived(selectedItemKeys.size > 0);
+    let visibleItemKeys = $derived(visibleMessages.map(getItemKey));
+    let allVisibleSelected = $derived(
+        Boolean(visibleItemKeys.length)
+        && visibleItemKeys.every((key) => selectedItemKeys.has(key))
+    );
+    let someVisibleSelected = $derived(
+        visibleItemKeys.some((key) => selectedItemKeys.has(key))
+    );
 
     const panelService: PanelService = getContext(Context.PANEL_SERVICE);
     const toastService: ToastService = getContext(Context.TOAST_SERVICE)
@@ -171,6 +207,9 @@
             const page = await getMessages(pageToken);
             messages = pageToken ? [...messages, ...page.messages] : page.messages;
             nextPageToken = page.nextPageToken;
+            if (!pageToken) {
+                selectedItemKeys = new Set();
+            }
         } catch (ex) {
             toastService.error({
                 message: `Failed to load messages`,
@@ -260,6 +299,83 @@
         }
     };
 
+    const setItemsChecked = (keys: string[], checked: boolean) => {
+        const nextSelection = new Set(selectedItemKeys);
+        for (const key of keys) {
+            checked ? nextSelection.add(key) : nextSelection.delete(key);
+        }
+        selectedItemKeys = nextSelection;
+    };
+
+    const setItemChecked = (message: ParsedMessage, checked: boolean) =>
+        setItemsChecked([getItemKey(message)], checked);
+
+    const toggleAllVisible = () =>
+        setItemsChecked(visibleItemKeys, !allVisibleSelected);
+
+    const getSectionKeys = (section: MessageSection) =>
+        section.messages.map(getItemKey);
+
+    const isSectionSelected = (section: MessageSection) => {
+        const keys = getSectionKeys(section);
+        return Boolean(keys.length) && keys.every((key) => selectedItemKeys.has(key));
+    };
+
+    const isSectionPartiallySelected = (section: MessageSection) => {
+        const keys = getSectionKeys(section);
+        return !isSectionSelected(section) && keys.some((key) => selectedItemKeys.has(key));
+    };
+
+    const toggleSection = (section: MessageSection) =>
+        setItemsChecked(getSectionKeys(section), !isSectionSelected(section));
+
+    const getSectionDoneAction = (section: MessageSection) =>
+        getCommonActions(section.messages.flatMap(getItemActionMessages))
+            .find((action) => action.label === 'Done');
+
+    const markSectionDone = (section: MessageSection) => {
+        const action = getSectionDoneAction(section);
+        if (action) {
+            void runBulkAction(action, section.messages);
+        }
+    };
+
+    const resolveActionTargetIds = async (items: ParsedMessage[]) => {
+        const targetGroups = await Promise.all(items.map((message) =>
+            parseBundles && message.bundleLabelId
+                ? listAllMessageIds(message.bundleLabelId)
+                : Promise.resolve(message.id ? [message.id] : [])
+        ));
+        return [...new Set(targetGroups.flat())];
+    };
+
+    const runBulkAction = async (action: MessageAction, items = getSelectedItems()) => {
+        if (!items.length || actionBusy) {
+            return;
+        }
+
+        actionBusy = true;
+        try {
+            const messageIds = await resolveActionTargetIds(items);
+            const executed = await executeMessageAction(action, messageIds);
+            if (!executed) {
+                return;
+            }
+
+            await loadMessages();
+            toastService.success({
+                message: `${action.label}: ${messageIds.length} ${messageIds.length === 1 ? 'message' : 'messages'}`,
+            });
+        } catch (ex) {
+            toastService.error({
+                message: `Failed to ${action.label.toLowerCase()}`,
+                error: formatError(ex),
+            });
+        } finally {
+            actionBusy = false;
+        }
+    };
+
     onMount(() => {
         void loadMessages();
     })
@@ -295,6 +411,33 @@
                     <span class="icon">keyboard_arrow_right</span>
                 </button>
             {/if}
+            <button
+                class="icon-button"
+                aria-label={allVisibleSelected ? 'Clear selection' : 'Select all'}
+                title={allVisibleSelected ? 'Clear selection' : 'Select all'}
+                disabled={!visibleItemKeys.length || loading || actionBusy}
+                onclick={toggleAllVisible}
+            >
+                <span class="icon">
+                    {allVisibleSelected
+                        ? 'check_box'
+                        : (someVisibleSelected ? 'indeterminate_check_box' : 'check_box_outline_blank')}
+                </span>
+            </button>
+            {#if selectionActive}
+                {#each selectedCommonActions as action (action.label)}
+                    <button
+                        class:active={action.isActive}
+                        class="icon-button"
+                        aria-label={`${action.label} selected`}
+                        title={action.label}
+                        disabled={actionBusy}
+                        onclick={() => runBulkAction(action)}
+                    >
+                        <span class="icon">{action.icon}</span>
+                    </button>
+                {/each}
+            {/if}
         </div>
         <div class="action-group">
             <button
@@ -319,7 +462,35 @@
         <div class="emailList" bind:this={emailListRoot}>
             {#each messageSections as section (section.label)}
                 {#if section.label}
-                    <h2 class="section-heading">{section.label}</h2>
+                    <h2 class="section-heading">
+                        <span class="section-label">
+                            <button
+                                class="icon-button section-select"
+                                aria-label={`Select all in ${section.label}`}
+                                title={`Select all in ${section.label}`}
+                                disabled={actionBusy}
+                                onclick={() => toggleSection(section)}
+                            >
+                                <span class="icon">
+                                    {isSectionSelected(section)
+                                        ? 'check_box'
+                                        : (isSectionPartiallySelected(section)
+                                            ? 'indeterminate_check_box'
+                                            : 'check_box_outline_blank')}
+                                </span>
+                            </button>
+                            <span>{section.label}</span>
+                        </span>
+                        <button
+                            class="icon-button section-done"
+                            aria-label={`Mark all in ${section.label} as done`}
+                            title="Mark all as done"
+                            disabled={actionBusy || !getSectionDoneAction(section)}
+                            onclick={() => markSectionDone(section)}
+                        >
+                            <span class="icon">done_all</span>
+                        </button>
+                    </h2>
                 {/if}
                 {#each section.messages as message (message.id ?? message)}
                     {#if parseBundles && message.bundleLabelId}
@@ -327,13 +498,22 @@
                             representative={message}
                             selected={message.bundleLabelId === selectedBundleLabelId
                                 && panelService.panels.includes(bundleList)}
+                            checked={selectedItemKeys.has(getItemKey(message))}
+                            showCheckbox={selectionActive}
+                            actions={getCommonActions(getItemActionMessages(message))}
+                            {actionBusy}
                             onOpen={openBundle}
                             onBundleDrop={handleBundleDrop}
                             onRename={handleBundleRename}
+                            onCheckedChange={(checked) => setItemChecked(message, checked)}
+                            onRunAction={(action) => runBulkAction(action, [message])}
                         />
                     {:else}
                         <EmailListEntry
                             message={message}
+                            checked={selectedItemKeys.has(getItemKey(message))}
+                            showCheckbox={selectionActive}
+                            onCheckedChange={(checked) => setItemChecked(message, checked)}
                             onMessageChanged={handleMessageChanged}
                             onBundleDrop={parseBundles ? handleBundleDrop : undefined}
                         />
@@ -361,12 +541,15 @@
     }
 
     .section-heading {
+        align-items: center;
         color: rgba(255, 255, 255, 0.62);
+        display: flex;
         font-size: 0.78rem;
         font-weight: 600;
         letter-spacing: 0.08em;
         margin: 18px 7px 6px;
         text-transform: uppercase;
+        justify-content: space-between;
     }
 
     .section-heading:first-child {
@@ -384,6 +567,20 @@
 
     .email-list {
         gap: 5px;
+    }
+
+    .section-select {
+        color: rgba(255, 255, 255, 0.62);
+    }
+
+    .section-label {
+        align-items: center;
+        display: flex;
+        gap: 7px;
+    }
+
+    .section-done {
+        color: rgba(255, 255, 255, 0.62);
     }
 
 </style>

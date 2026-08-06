@@ -1,18 +1,31 @@
 <script lang="ts">
     import type {ParsedMessage} from "../services/GmailService";
+    import type {MessageAction} from "../MessageActions";
 
     let {
         representative,
         selected = false,
+        checked = false,
+        showCheckbox = false,
+        actions = [],
+        actionBusy = false,
         onOpen,
         onBundleDrop,
         onRename,
+        onCheckedChange,
+        onRunAction,
     }: {
         representative: ParsedMessage,
         selected?: boolean,
+        checked?: boolean,
+        showCheckbox?: boolean,
+        actions?: MessageAction[],
+        actionBusy?: boolean,
         onOpen: (bundleLabelId: string, bundleTitle?: string) => void,
         onBundleDrop: (sourceMessageId: string, target: ParsedMessage) => void,
         onRename: (bundleLabelId: string, bundleTitle?: string) => void,
+        onCheckedChange?: (checked: boolean) => void,
+        onRunAction: (action: MessageAction) => void,
     } = $props();
 
     let dragOver = $state(false);
@@ -76,6 +89,7 @@
 
 <div
     class:selected
+    class:selection-visible={showCheckbox || checked}
     class:drag-over={dragOver}
     class="email bundle"
     role="button"
@@ -86,14 +100,35 @@
     ondragleave={() => dragOver = false}
     ondrop={handleDrop}
 >
+    <div class="action-group left">
+        <input
+            type="checkbox"
+            aria-label="Select bundle"
+            {checked}
+            onchange={(event) => onCheckedChange?.(event.currentTarget.checked)}
+        />
+    </div>
     <span class="sender">{representative.bundleTitle ?? 'Untitled bundle'} <span class="count">({count})</span></span>
     <div class="content">{senders}</div>
     <span class="date">{representative.date ?? "??"}</span>
     <div class="action-group right">
+        {#each actions as action (action.label)}
+            <button
+                class:active={action.isActive}
+                class="icon-button"
+                aria-label={`${action.label} for bundle`}
+                title={action.label}
+                disabled={actionBusy}
+                onclick={() => onRunAction(action)}
+            >
+                <span class="icon">{action.icon}</span>
+            </button>
+        {/each}
         <button
             class="icon-button"
             aria-label="Rename bundle"
             title="Rename bundle"
+            disabled={actionBusy}
             onclick={() => representative.bundleLabelId
                 && onRename(representative.bundleLabelId, representative.bundleTitle)}
         >
@@ -152,12 +187,23 @@
         position: absolute;
         top: 0;
         bottom: 0;
-        right: 0;
         background-color: #232323;
         padding: 5px;
+
+        &.right {
+            right: 0;
+        }
+
+        &.left {
+            left: 0;
+        }
     }
 
     .email:hover .action-group {
+        display: flex;
+    }
+
+    .email.selection-visible .action-group.left {
         display: flex;
     }
 

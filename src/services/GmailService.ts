@@ -19,6 +19,14 @@ export interface BundleSummary {
     count: number;
     hasMore: boolean;
     senders: string[];
+    messages: ActionableMessage[];
+}
+
+export interface ActionableMessage {
+    id?: string;
+    labelIds: string[];
+    starred: boolean;
+    unread: boolean;
 }
 
 export interface ParsedAttachment {
@@ -65,6 +73,8 @@ const BUNDLE_LABEL_PREFIX = 'Fettuccemail/Bundles/';
 const BUNDLE_TITLE_SEPARATOR = '::';
 const MAX_BUNDLE_LABEL_LENGTH = 225;
 const BUNDLE_SUMMARY_LIMIT = 25;
+const GMAIL_LIST_LIMIT = 500;
+const GMAIL_BATCH_MODIFY_LIMIT = 1000;
 
 export async function listMessagePage(options: MessageListOptions = {}): Promise<MessagePage> {
     try {
@@ -120,17 +130,11 @@ async function loadBundleSummaries(messages: ParsedMessage[]): Promise<Map<strin
     );
     const summaries = await Promise.all(
         [...bundleLabelIds].map(async (bundleLabelId) => {
-            const response = await gapi.client.gmail.users.messages.list({
-                userId: 'me',
-                maxResults: BUNDLE_SUMMARY_LIMIT,
-                labelIds: [bundleLabelId],
-                includeSpamTrash: true,
-            });
-            const messageRefs = response.result.messages?.filter((message) => message.id) ?? [];
-            const senders = await Promise.all(messageRefs.map(async ({id}) => {
+            const messageRefs = await listMessageRefsByLabel(bundleLabelId);
+            const bundleMessages = await Promise.all(messageRefs.map(async ({id}) => {
                 const knownMessage = knownMessages.get(id!);
                 if (knownMessage) {
-                    return knownMessage.sender ?? 'Unknown sender';
+                    return knownMessage;
                 }
 
                 const messageResponse = await gapi.client.gmail.users.messages.get({
@@ -139,18 +143,82 @@ async function loadBundleSummaries(messages: ParsedMessage[]): Promise<Map<strin
                     format: 'metadata',
                     metadataHeaders: ['From'],
                 });
-                return getHeader(messageResponse.result, 'From') ?? 'Unknown sender';
+                const labelIds = messageResponse.result.labelIds ?? [];
+                return {
+                    id: messageResponse.result.id,
+                    sender: getHeader(messageResponse.result, 'From'),
+                    labelIds,
+                    starred: labelIds.includes('STARRED'),
+                    unread: labelIds.includes('UNREAD'),
+                };
             }));
 
             return [bundleLabelId, {
-                count: messageRefs.length,
-                hasMore: Boolean(response.result.nextPageToken),
-                senders,
+                count: Math.min(messageRefs.length, BUNDLE_SUMMARY_LIMIT),
+                hasMore: messageRefs.length > BUNDLE_SUMMARY_LIMIT,
+                senders: bundleMessages
+                    .slice(0, BUNDLE_SUMMARY_LIMIT)
+                    .map((message) => message.sender ?? 'Unknown sender'),
+                messages: bundleMessages,
             }] as const;
         })
     );
 
     return new Map(summaries);
+}
+
+export async function listAllMessageIds(labelId: string): Promise<string[]> {
+    try {
+        return (await listMessageRefsByLabel(labelId)).map((message) => message.id!);
+    } catch (error) {
+        throw new GmailApiError(error);
+    }
+}
+
+export async function batchModifyMessageLabels(
+    messageIds: string[],
+    addLabelIds: string[] = [],
+    removeLabelIds: string[] = [],
+) {
+    if (!messageIds.length) {
+        return;
+    }
+
+    try {
+        const requests: Promise<unknown>[] = [];
+        for (let index = 0; index < messageIds.length; index += GMAIL_BATCH_MODIFY_LIMIT) {
+            requests.push(gapi.client.gmail.users.messages.batchModify({
+                userId: 'me',
+                resource: {
+                    ids: messageIds.slice(index, index + GMAIL_BATCH_MODIFY_LIMIT),
+                    addLabelIds,
+                    removeLabelIds,
+                },
+            }));
+        }
+        await Promise.all(requests);
+    } catch (error) {
+        throw new GmailApiError(error);
+    }
+}
+
+async function listMessageRefsByLabel(labelId: string): Promise<gapi.client.gmail.Message[]> {
+    const messages: gapi.client.gmail.Message[] = [];
+    let pageToken: string | undefined;
+
+    do {
+        const response = await gapi.client.gmail.users.messages.list({
+            userId: 'me',
+            maxResults: GMAIL_LIST_LIMIT,
+            pageToken,
+            labelIds: [labelId],
+            includeSpamTrash: true,
+        });
+        messages.push(...(response.result.messages ?? []).filter((message) => message.id));
+        pageToken = response.result.nextPageToken;
+    } while (pageToken);
+
+    return messages;
 }
 
 export function parseMessage(

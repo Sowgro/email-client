@@ -10,7 +10,7 @@
         type ParsedAttachment,
         type ParsedMessage
     } from "../services/GmailService";
-    import {getRelevantActions, type MessageAction} from "../MessageActions";
+    import {executeMessageAction, getRelevantActions, type MessageAction} from "../MessageActions";
 
     let {
         message,
@@ -34,8 +34,13 @@
         ps.panels = ps.panels.slice(0, -1);
     }
 
-    const runAction = async (action: MessageAction) =>
-        action.onAction(message.id!).then(() => {
+    const runAction = async (action: MessageAction) => {
+        try {
+            const executed = await executeMessageAction(action, [message.id!]);
+            if (!executed) {
+                return;
+            }
+
             const selectedReplacement =
                 onMessageChanged?.(message.id!, action.changes ?? {}, action.removeFromList) ?? false;
 
@@ -49,13 +54,14 @@
                     label: "Undo",
                     fn: () => {/* TODO */}
                 }
-            })
-        }).catch(ex => {
+            });
+        } catch (ex) {
             toastService.error({
                 message: `An error occurred while completing action ${action.label}`,
                 error: formatError(ex)
-            })
-        })
+            });
+        }
+    };
 
     const handleAttachmentDownload = async (attachment: ParsedAttachment) => {
         downloadingAttachmentId = attachment.id;

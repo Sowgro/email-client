@@ -4,15 +4,21 @@
     import {PanelService} from "../services/PanelService.svelte";
     import EmailView from "./EmailView.svelte";
     import {formatError, type ParsedMessage} from "../services/GmailService";
-    import {getRelevantActions, type MessageAction} from "../MessageActions";
+    import {executeMessageAction, getRelevantActions, type MessageAction} from "../MessageActions";
     import type {ToastService} from "../services/ToastService.svelte";
 
     let {
         message,
+        checked = false,
+        showCheckbox = false,
+        onCheckedChange,
         onMessageChanged,
         onBundleDrop,
     }: {
         message: ParsedMessage,
+        checked?: boolean,
+        showCheckbox?: boolean,
+        onCheckedChange?: (checked: boolean) => void,
         onMessageChanged?: (
             messageId: string,
             changes: Partial<ParsedMessage>,
@@ -87,8 +93,13 @@
         onBundleDrop?.(sourceMessageId, message);
     };
 
-    const runAction = (action: MessageAction) =>
-        action.onAction(message.id!).then(() => {
+    const runAction = async (action: MessageAction) => {
+        try {
+            const executed = await executeMessageAction(action, [message.id!]);
+            if (!executed) {
+                return;
+            }
+
             const selectedReplacement =
                 onMessageChanged?.(message.id!, action.changes ?? {}, action.removeFromList) ?? false;
 
@@ -102,13 +113,14 @@
                     label: "Undo",
                     fn: () => {/* TODO */}
                 }
-            })
-        }).catch((ex) => {
+            });
+        } catch (ex) {
             toastService.error({
                 message: `An error occurred while completing action ${action.label}`,
                 error: formatError(ex)
-            })
-        })
+            });
+        }
+    };
 
 </script>
 
@@ -119,6 +131,7 @@
 <div
     bind:this={emailRoot}
     class:selected={panelService.panels.includes(emailView)}
+    class:selection-visible={showCheckbox || checked}
     class:drag-over={dragOver}
     class="email"
     role="button"
@@ -132,7 +145,12 @@
     ondrop={handleDrop}
 >
     <div class="action-group left">
-        <input type="checkbox"/>
+        <input
+            type="checkbox"
+            aria-label="Select email"
+            {checked}
+            onchange={(event) => onCheckedChange?.(event.currentTarget.checked)}
+        />
     </div>
     <span class="sender">{message.sender ?? "Unknown sender"}</span>
     <div class="content">
@@ -219,6 +237,10 @@
     }
 
     .email:hover .action-group {
+        display: flex;
+    }
+
+    .email.selection-visible .action-group.left {
         display: flex;
     }
 </style>
