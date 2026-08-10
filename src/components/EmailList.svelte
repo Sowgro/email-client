@@ -23,6 +23,7 @@
         getCommonActions,
         type MessageAction,
     } from "../MessageActions";
+    import SectionHeader from "./SectionHeader.svelte";
 
     let {
         getMessages,
@@ -464,36 +465,14 @@
         <div class="emailList" bind:this={emailListRoot}>
             {#each messageSections as section (section.label)}
                 {#if section.label}
-                    <h2 class="section-heading">
-                        <span class="section-label">
-                            <button
-                                class:selection-visible={selectionActive}
-                                class="icon-button section-select"
-                                aria-label={`Select all in ${section.label}`}
-                                title={`Select all in ${section.label}`}
-                                disabled={actionBusy}
-                                onclick={() => toggleSection(section)}
-                            >
-                                <span class="icon">
-                                    {isSectionSelected(section)
-                                        ? 'check_box'
-                                        : (isSectionPartiallySelected(section)
-                                            ? 'indeterminate_check_box'
-                                            : 'check_box_outline_blank')}
-                                </span>
-                            </button>
-                            <span>{section.label}</span>
-                        </span>
-                        <button
-                            class="icon-button section-done"
-                            aria-label={`Mark all in ${section.label} as done`}
-                            title="Mark all as done"
-                            disabled={actionBusy || !getSectionDoneAction(section)}
-                            onclick={() => markSectionDone(section)}
-                        >
-                            <span class="icon">done_all</span>
-                        </button>
-                    </h2>
+                    <SectionHeader
+                            label={section.label}
+                            checked={isSectionPartiallySelected(section) ? 'partial' : isSectionSelected(section)}
+                            onCheckChanged={() => toggleSection(section)}
+                            selectionActive={selectionActive}
+                            actionBusy={actionBusy}
+                            onSectionDone={getSectionDoneAction(section) && (() => markSectionDone(section))}
+                    />
                 {/if}
                 {#each section.messages as message (message.id ?? message)}
                     {#if parseBundles && message.bundleLabelId}
@@ -543,22 +522,6 @@
         margin-top: 5px;
     }
 
-    .section-heading {
-        align-items: center;
-        color: rgba(255, 255, 255, 0.62);
-        display: flex;
-        font-size: 0.78rem;
-        font-weight: 600;
-        letter-spacing: 0.08em;
-        margin: 18px 7px 6px;
-        text-transform: uppercase;
-        justify-content: space-between;
-    }
-
-    .section-heading:first-child {
-        margin-top: 8px;
-    }
-
     .list-title {
         font-size: larger;
         align-items: center;
@@ -571,32 +534,4 @@
     .email-list {
         gap: 5px;
     }
-
-    .section-select {
-        display: none;
-        color: rgba(255, 255, 255, 0.62);
-    }
-
-    .section-label {
-        align-items: center;
-        display: flex;
-        gap: 7px;
-    }
-
-    .section-done {
-        color: rgba(255, 255, 255, 0.62);
-    }
-
-    .section-heading:hover .section-select {
-        display: flex;
-    }
-
-    .section-select.selection-visible {
-        display: flex;
-    }
-
-    .section-heading .icon-button {
-        font-size: 19.2px;
-    }
-
 </style>
