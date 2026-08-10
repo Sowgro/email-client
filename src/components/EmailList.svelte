@@ -18,6 +18,7 @@
     import {PanelService} from "../services/PanelService.svelte";
     import {ToastService} from "../services/ToastService.svelte";
     import {type MessageSection, sortDate, sortPinned} from "../MessageSorter";
+    import {buildListItems, type EmailListItem} from "../EmailListItem";
     import {
         executeMessageAction,
         getCommonActions,
@@ -49,53 +50,27 @@
     let selectedItemKeys: Set<string> = $state(new Set());
     let actionBusy = $state(false);
 
-    const getVisibleMessages = (items: ParsedMessage[]) => {
-        if (!parseBundles) {
-            return items;
-        }
+    const getRepresentative = (item: EmailListItem) => item.representative;
 
-        const seenBundleIds = new Set<string>();
-        return items.filter((message) => {
-            if (!message.bundleLabelId) {
-                return true;
-            }
-            if (seenBundleIds.has(message.bundleLabelId)) {
-                return false;
-            }
-            seenBundleIds.add(message.bundleLabelId);
-            return true;
-        });
-    };
-
-    const getMessageSections = (items: ParsedMessage[]): MessageSection[] => {
-        let r: MessageSection[] = [{label: null, messages: items}];
-        groupPins && r.push(...sortPinned(r.pop()!.messages));
-        groupByDate && r.push(...sortDate(r.pop()!.messages));
+    const getMessageSections = (items: EmailListItem[]): MessageSection<EmailListItem>[] => {
+        let r: MessageSection<EmailListItem>[] = [{label: null, messages: items}];
+        groupPins && r.push(...sortPinned(r.pop()!.messages, getRepresentative));
+        groupByDate && r.push(...sortDate(r.pop()!.messages, getRepresentative));
         return r.filter(s => s.messages.length);
     };
 
-    let visibleMessages = $derived(getVisibleMessages(messages));
-    let messageSections = $derived(getMessageSections(visibleMessages));
-
-    const getItemKey = (message: ParsedMessage) =>
-        parseBundles && message.bundleLabelId
-            ? `bundle:${message.bundleLabelId}`
-            : `message:${message.id}`;
-
-    const getItemActionMessages = (message: ParsedMessage) =>
-        parseBundles && message.bundleLabelId
-            ? (message.bundleSummary?.messages ?? [message])
-            : [message];
+    let listItems = $derived(buildListItems(messages, parseBundles));
+    let messageSections = $derived(getMessageSections(listItems));
 
     const getSelectedItems = () =>
-        visibleMessages.filter((message) => selectedItemKeys.has(getItemKey(message)));
+        listItems.filter((item) => selectedItemKeys.has(item.key));
 
     const getSelectedCommonActions = () =>
-        getCommonActions(getSelectedItems().flatMap(getItemActionMessages));
+        getCommonActions(getSelectedItems().flatMap((item) => item.actionMessages));
 
     let selectedCommonActions = $derived(getSelectedCommonActions());
     let selectionActive = $derived(selectedItemKeys.size > 0);
-    let visibleItemKeys = $derived(visibleMessages.map(getItemKey));
+    let visibleItemKeys = $derived(listItems.map((item) => item.key));
     let allVisibleSelected = $derived(
         Boolean(visibleItemKeys.length)
         && visibleItemKeys.every((key) => selectedItemKeys.has(key))
@@ -310,44 +285,44 @@
         selectedItemKeys = nextSelection;
     };
 
-    const setItemChecked = (message: ParsedMessage, checked: boolean) =>
-        setItemsChecked([getItemKey(message)], checked);
+    const setItemChecked = (item: EmailListItem, checked: boolean) =>
+        setItemsChecked([item.key], checked);
 
     const toggleAllVisible = () =>
         setItemsChecked(visibleItemKeys, !allVisibleSelected);
 
-    const getSectionKeys = (section: MessageSection) =>
-        section.messages.map(getItemKey);
+    const getSectionKeys = (section: MessageSection<EmailListItem>) =>
+        section.messages.map((item) => item.key);
 
-    const isSectionSelected = (section: MessageSection) => {
+    const isSectionSelected = (section: MessageSection<EmailListItem>) => {
         const keys = getSectionKeys(section);
         return Boolean(keys.length) && keys.every((key) => selectedItemKeys.has(key));
     };
 
-    const isSectionPartiallySelected = (section: MessageSection) => {
+    const isSectionPartiallySelected = (section: MessageSection<EmailListItem>) => {
         const keys = getSectionKeys(section);
         return !isSectionSelected(section) && keys.some((key) => selectedItemKeys.has(key));
     };
 
-    const toggleSection = (section: MessageSection) =>
+    const toggleSection = (section: MessageSection<EmailListItem>) =>
         setItemsChecked(getSectionKeys(section), !isSectionSelected(section));
 
-    const getSectionDoneAction = (section: MessageSection) =>
-        getCommonActions(section.messages.flatMap(getItemActionMessages))
+    const getSectionDoneAction = (section: MessageSection<EmailListItem>) =>
+        getCommonActions(section.messages.flatMap((item) => item.actionMessages))
             .find((action) => action.label === 'Done');
 
-    const markSectionDone = (section: MessageSection) => {
+    const markSectionDone = (section: MessageSection<EmailListItem>) => {
         const action = getSectionDoneAction(section);
         if (action) {
             void runBulkAction(action, section.messages);
         }
     };
 
-    const resolveActionTargetIds = async (items: ParsedMessage[]) => {
-        const targetGroups = await Promise.all(items.map((message) =>
-            parseBundles && message.bundleLabelId
-                ? listAllMessageIds(message.bundleLabelId)
-                : Promise.resolve(message.id ? [message.id] : [])
+    const resolveActionTargetIds = async (items: EmailListItem[]) => {
+        const targetGroups = await Promise.all(items.map((item) =>
+            item.kind === 'bundle'
+                ? listAllMessageIds(item.bundleLabelId)
+                : Promise.resolve(item.representative.id ? [item.representative.id] : [])
         ));
         return [...new Set(targetGroups.flat())];
     };
@@ -474,28 +449,29 @@
                             onSectionDone={getSectionDoneAction(section) && (() => markSectionDone(section))}
                     />
                 {/if}
-                {#each section.messages as message (message.id ?? message)}
-                    {#if parseBundles && message.bundleLabelId}
+                {#each section.messages as item (item.key)}
+                    {@const message = item.representative}
+                    {#if item.kind === 'bundle'}
                         <BundleListEntry
                             representative={message}
-                            selected={message.bundleLabelId === selectedBundleLabelId
+                            selected={item.bundleLabelId === selectedBundleLabelId
                                 && panelService.panels.includes(bundleList)}
-                            checked={selectedItemKeys.has(getItemKey(message))}
+                            checked={selectedItemKeys.has(item.key)}
                             showCheckbox={selectionActive}
-                            actions={getCommonActions(getItemActionMessages(message))}
+                            actions={getCommonActions(item.actionMessages)}
                             {actionBusy}
                             onOpen={openBundle}
                             onBundleDrop={handleBundleDrop}
                             onRename={handleBundleRename}
-                            onCheckedChange={(checked) => setItemChecked(message, checked)}
-                            onRunAction={(action) => runBulkAction(action, [message])}
+                            onCheckedChange={(checked) => setItemChecked(item, checked)}
+                            onRunAction={(action) => runBulkAction(action, [item])}
                         />
                     {:else}
                         <EmailListEntry
                             message={message}
-                            checked={selectedItemKeys.has(getItemKey(message))}
+                            checked={selectedItemKeys.has(item.key)}
                             showCheckbox={selectionActive}
-                            onCheckedChange={(checked) => setItemChecked(message, checked)}
+                            onCheckedChange={(checked) => setItemChecked(item, checked)}
                             onMessageChanged={handleMessageChanged}
                             onBundleDrop={parseBundles ? handleBundleDrop : undefined}
                         />

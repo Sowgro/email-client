@@ -1,21 +1,37 @@
 import type {ParsedMessage} from "./services/GmailService";
 
-export type MessageSection = {
+export type MessageSection<T = ParsedMessage> = {
     label: string | null;
-    messages: ParsedMessage[];
+    messages: T[];
 };
 
 export const startOfDay = (date: Date) =>
     new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
-export function sortPinned(messages: ParsedMessage[]) {
+export function sortPinned<T extends ParsedMessage>(messages: T[]): MessageSection<T>[];
+export function sortPinned<T>(
+    messages: T[],
+    getMessage: (item: T) => ParsedMessage,
+): MessageSection<T>[];
+export function sortPinned<T>(
+    messages: T[],
+    getMessage: (item: T) => ParsedMessage = (item) => item as ParsedMessage,
+): MessageSection<T>[] {
     return [
-        {label: 'Pinned', messages: messages.filter((message) => message.starred)},
-        {label: 'Messages', messages: messages.filter((message) => !message.starred)},
+        {label: 'Pinned', messages: messages.filter((item) => getMessage(item).starred)},
+        {label: 'Messages', messages: messages.filter((item) => !getMessage(item).starred)},
     ]
 }
 
-export function sortDate(messages: ParsedMessage[]) {
+export function sortDate<T extends ParsedMessage>(messages: T[]): MessageSection<T>[];
+export function sortDate<T>(
+    messages: T[],
+    getMessage: (item: T) => ParsedMessage,
+): MessageSection<T>[];
+export function sortDate<T>(
+    messages: T[],
+    getMessage: (item: T) => ParsedMessage = (item) => item as ParsedMessage,
+): MessageSection<T>[] {
     const today = startOfDay(new Date());
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
@@ -26,7 +42,7 @@ export function sortDate(messages: ParsedMessage[]) {
     const lastMonth = new Date(today);
     lastMonth.setDate(today.getDate() - 30);
 
-    const dateSections: MessageSection[] = [
+    const dateSections: MessageSection<T>[] = [
         {label: 'Today', messages: []},
         {label: 'Yesterday', messages: []},
         {label: 'Within the last week', messages: []},
@@ -34,7 +50,8 @@ export function sortDate(messages: ParsedMessage[]) {
         {label: 'Older', messages: []},
     ];
 
-    for (const message of messages) {
+    for (const item of messages) {
+        const message = getMessage(item);
         const messageDate = message.date ? startOfDay(new Date(message.date)) : undefined;
         const timestamp = messageDate?.getTime();
         let sectionIndex = 4;
@@ -51,7 +68,7 @@ export function sortDate(messages: ParsedMessage[]) {
             }
         }
 
-        dateSections[sectionIndex].messages.push(message);
+        dateSections[sectionIndex].messages.push(item);
     }
 
     return dateSections
