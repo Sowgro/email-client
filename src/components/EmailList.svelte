@@ -14,11 +14,11 @@
     } from "../services/BundleService";
     import {PanelService} from "../services/PanelService.svelte";
     import {ToastService} from "../services/ToastService.svelte";
+    import {MessageActionService} from "../services/MessageActionService.svelte";
     import {type MessageSection, sortDate, sortPinned} from "../MessageSorter";
     import {buildListItems, type EmailListItem} from "../EmailListItem";
     import {Selection} from "../Selection.svelte";
     import {
-        executeMessageAction,
         getCommonActions,
         type MessageAction,
     } from "../MessageActions";
@@ -43,7 +43,6 @@
     let loading = $state(true);
     let bundling = $state(false);
     let emailListRoot: HTMLDivElement | undefined = $state();
-    let actionBusy = $state(false);
     const selection = new Selection<EmailListItem>((item) => item.key);
 
     const getRepresentative = (item: EmailListItem) => item.representative;
@@ -67,6 +66,7 @@
 
     const panelService: PanelService = getContext(Context.PANEL_SERVICE);
     const toastService: ToastService = getContext(Context.TOAST_SERVICE)
+    const messageActionService: MessageActionService = getContext(Context.MESSAGE_ACTION_SERVICE)
 
     const getSelectedMessage = () =>
         emailListRoot?.querySelector<HTMLElement>('.email.selected');
@@ -237,30 +237,23 @@
     };
 
     const runBulkAction = async (action: MessageAction, items = selection.selected(listItems)) => {
-        if (!items.length || actionBusy) {
+        if (!items.length || messageActionService.busy) {
             return;
         }
 
-        actionBusy = true;
-        try {
-            const messageIds = await resolveActionTargetIds(items);
-            const executed = await executeMessageAction(action, messageIds);
-            if (!executed) {
-                return;
-            }
-
-            await loadMessages();
-            toastService.success({
-                message: `${action.label}: ${messageIds.length} ${messageIds.length === 1 ? 'message' : 'messages'}`,
-            });
-        } catch (ex) {
-            toastService.error({
-                message: `Failed to ${action.label.toLowerCase()}`,
-                error: formatError(ex),
-            });
-        } finally {
-            actionBusy = false;
+        let messageIds: string[] = [];
+        const executed = await messageActionService.runBulk(action, async () => {
+            messageIds = await resolveActionTargetIds(items);
+            return messageIds;
+        });
+        if (!executed) {
+            return;
         }
+
+        await loadMessages();
+        toastService.success({
+            message: `${action.label}: ${messageIds.length} ${messageIds.length === 1 ? 'message' : 'messages'}`,
+        });
     };
 
     onMount(() => {
@@ -286,7 +279,7 @@
                 class="icon-button"
                 aria-label={allVisibleSelected ? 'Clear selection' : 'Select all'}
                 title={allVisibleSelected ? 'Clear selection' : 'Select all'}
-                disabled={!listItems.length || loading || actionBusy}
+                disabled={!listItems.length || loading || messageActionService.busy}
                 onclick={() => selection.toggle(listItems)}
             >
                 <span class="icon">
@@ -302,7 +295,7 @@
                         class="icon-button"
                         aria-label={`${action.label} selected`}
                         title={action.label}
-                        disabled={actionBusy}
+                        disabled={messageActionService.busy}
                         onclick={() => runBulkAction(action)}
                     >
                         <span class="icon">{action.icon}</span>
@@ -338,7 +331,6 @@
                             checked={selection.state(section.messages)}
                             onCheckChanged={(checked) => selection.set(section.messages, checked)}
                             selectionActive={selection.active}
-                            actionBusy={actionBusy}
                             onSectionDone={getSectionDoneAction(section) && (() => markSectionDone(section))}
                     />
                 {/if}

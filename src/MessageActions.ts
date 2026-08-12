@@ -151,25 +151,10 @@ function getCommonActions(messages: ActionableMessage[]): MessageAction[] {
     );
 }
 
-async function executeMessageAction(action: MessageAction, messageIds: string[]): Promise<boolean> {
-    const uniqueIds = [...new Set(messageIds)];
-    if (!uniqueIds.length || (action.confirm && !action.confirm(uniqueIds.length))) {
-        return false;
-    }
-
-    if (action.onBulkAction) {
-        await action.onBulkAction(uniqueIds);
-    } else {
-        await Promise.all(uniqueIds.map(action.onAction));
-    }
-    return true;
-}
-
 let messageActions = { permanentlyDelete }
 
 export {
     type MessageAction,
-    executeMessageAction,
     getCommonActions,
     getRelevantActions,
     messageActions,

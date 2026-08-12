@@ -8,6 +8,7 @@
     import EmailList from "./EmailList.svelte";
     import type {BundleListItem} from "../EmailListItem";
     import type {ToastService} from "../services/ToastService.svelte";
+    import type {MessageActionService} from "../services/MessageActionService.svelte";
 
     let {
         representative,
@@ -29,10 +30,9 @@
         onRunAction: (action: MessageAction) => void,
     } = $props();
 
-    let actionBusy = false; // TODO
-
     let panelService: PanelService = getContext(Context.PANEL_SERVICE)
     let toastService: ToastService = getContext(Context.TOAST_SERVICE)
+    let messageActionService: MessageActionService = getContext(Context.MESSAGE_ACTION_SERVICE)
 
     let emailRoot: HTMLDivElement | undefined = $state();
     let bundling: boolean = $state(false)
@@ -185,7 +185,7 @@
                 class="icon-button"
                 aria-label={`${action.label} for bundle`}
                 title={action.label}
-                disabled={actionBusy}
+                disabled={messageActionService.busy}
                 onclick={() => onRunAction(action)}
             >
                 <span class="icon">{action.icon}</span>
@@ -195,7 +195,7 @@
             class="icon-button"
             aria-label="Rename bundle"
             title="Rename bundle"
-            disabled={actionBusy}
+            disabled={messageActionService.busy || bundling}
             onclick={() => representative.bundleLabelId
                 && handleBundleRename(representative.bundleLabelId, representative.bundleTitle)}
         >

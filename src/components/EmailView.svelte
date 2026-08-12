@@ -10,7 +10,8 @@
         type ParsedAttachment,
         type ParsedMessage
     } from "../services/GmailService";
-    import {executeMessageAction, getRelevantActions, type MessageAction} from "../MessageActions";
+    import {getRelevantActions, type MessageAction} from "../MessageActions";
+    import type {MessageActionService} from "../services/MessageActionService.svelte";
 
     let {
         message,
@@ -26,6 +27,7 @@
 
     let ps: PanelService = getContext(Context.PANEL_SERVICE)
     let toastService: ToastService = getContext(Context.TOAST_SERVICE)
+    let messageActionService: MessageActionService = getContext(Context.MESSAGE_ACTION_SERVICE)
 
     let downloadingAttachmentId: string | undefined = $state();
     let actions: MessageAction[] = $derived(getRelevantActions(message));
@@ -35,32 +37,29 @@
     }
 
     const runAction = async (action: MessageAction) => {
-        try {
-            const executed = await executeMessageAction(action, [message.id!]);
-            if (!executed) {
-                return;
-            }
-
-            const selectedReplacement =
-                onMessageChanged?.(message.id!, action.changes ?? {}, action.removeFromList) ?? false;
-
-            if (action.removeFromList && !selectedReplacement) {
-                closePanel();
-            }
-
-            toastService.success({
-                message: `Success: ${action.label}`,
-                action: {
-                    label: "Undo",
-                    fn: () => {/* TODO */}
-                }
-            });
-        } catch (ex) {
-            toastService.error({
-                message: `An error occurred while completing action ${action.label}`,
-                error: formatError(ex)
-            });
+        if (!message.id) {
+            return;
         }
+
+        const executed = await messageActionService.run(action, message.id);
+        if (!executed) {
+            return;
+        }
+
+        const selectedReplacement =
+            onMessageChanged?.(message.id, action.changes ?? {}, action.removeFromList) ?? false;
+
+        if (action.removeFromList && !selectedReplacement) {
+            closePanel();
+        }
+
+        toastService.success({
+            message: `Success: ${action.label}`,
+            action: {
+                label: "Undo",
+                fn: () => {/* TODO */}
+            }
+        });
     };
 
     const handleAttachmentDownload = async (attachment: ParsedAttachment) => {
@@ -111,15 +110,17 @@
                         class="icon-button"
                         aria-label={action.label}
                         title={action.label}
+                        disabled={!message.id || messageActionService.busy}
                         onclick={() => runAction(action)}
                     >
                         <span class="icon">{action.icon}</span>
                     </button>
                 {/each}
-                <ContextMenu>
+                <ContextMenu disabled={messageActionService.busy}>
                     {#each actions.slice(3) as action (action.label)}
                         <button
                                 role="menuitem"
+                                disabled={!message.id || messageActionService.busy}
                                 onclick={() => runAction(action)}
                         >
                             <span class="icon">{action.icon}</span>

@@ -7,9 +7,13 @@
   import {Context} from "./Context";
   import {Router} from "./services/Router.svelte";
   import {AuthService} from "./services/AuthService.svelte";
+  import {MessageActionService} from "./services/MessageActionService.svelte";
 
   const toastService = new ToastService()
   setContext(Context.TOAST_SERVICE, toastService)
+
+  const messageActionService = new MessageActionService(toastService)
+  setContext(Context.MESSAGE_ACTION_SERVICE, messageActionService)
 
   const router = new Router()
   setContext(Context.ROUTER, router)

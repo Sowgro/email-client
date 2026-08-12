@@ -3,9 +3,10 @@
     import {Context} from "../Context";
     import {PanelService} from "../services/PanelService.svelte";
     import EmailView from "./EmailView.svelte";
-    import {formatError, type ParsedMessage} from "../services/GmailService";
-    import {executeMessageAction, getRelevantActions, type MessageAction} from "../MessageActions";
+    import type {ParsedMessage} from "../services/GmailService";
+    import {getRelevantActions, type MessageAction} from "../MessageActions";
     import type {ToastService} from "../services/ToastService.svelte";
+    import type {MessageActionService} from "../services/MessageActionService.svelte";
 
     let {
         message,
@@ -29,6 +30,7 @@
 
     let panelService: PanelService = getContext(Context.PANEL_SERVICE)
     let toastService: ToastService = getContext(Context.TOAST_SERVICE)
+    let messageActionService: MessageActionService = getContext(Context.MESSAGE_ACTION_SERVICE)
     let emailRoot: HTMLDivElement | undefined = $state();
     let dragOver = $state(false);
 
@@ -94,32 +96,29 @@
     };
 
     const runAction = async (action: MessageAction) => {
-        try {
-            const executed = await executeMessageAction(action, [message.id!]);
-            if (!executed) {
-                return;
-            }
-
-            const selectedReplacement =
-                onMessageChanged?.(message.id!, action.changes ?? {}, action.removeFromList) ?? false;
-
-            if (action.removeFromList && !selectedReplacement) {
-                panelService.removePanel(emailView)
-            }
-
-            toastService.success({
-                message: `Success: ${action.label}`,
-                action: {
-                    label: "Undo",
-                    fn: () => {/* TODO */}
-                }
-            });
-        } catch (ex) {
-            toastService.error({
-                message: `An error occurred while completing action ${action.label}`,
-                error: formatError(ex)
-            });
+        if (!message.id) {
+            return;
         }
+
+        const executed = await messageActionService.run(action, message.id);
+        if (!executed) {
+            return;
+        }
+
+        const selectedReplacement =
+            onMessageChanged?.(message.id, action.changes ?? {}, action.removeFromList) ?? false;
+
+        if (action.removeFromList && !selectedReplacement) {
+            panelService.removePanel(emailView)
+        }
+
+        toastService.success({
+            message: `Success: ${action.label}`,
+            action: {
+                label: "Undo",
+                fn: () => {/* TODO */}
+            }
+        });
     };
 
 </script>
@@ -168,7 +167,7 @@
                     class="icon-button"
                     aria-label={action.label}
                     title={action.label}
-                    disabled={!message.id}
+                    disabled={!message.id || messageActionService.busy}
                     onclick={() => runAction(action)}
             >
                 <span class="icon">{action.icon}</span>
