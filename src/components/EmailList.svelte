@@ -19,6 +19,7 @@
     import {ToastService} from "../services/ToastService.svelte";
     import {type MessageSection, sortDate, sortPinned} from "../MessageSorter";
     import {buildListItems, type EmailListItem} from "../EmailListItem";
+    import {Selection} from "../Selection.svelte";
     import {
         executeMessageAction,
         getCommonActions,
@@ -47,8 +48,8 @@
     let emailListRoot: HTMLDivElement | undefined = $state();
     let selectedBundleLabelId: string | undefined = $state();
     let selectedBundleTitle: string | undefined = $state();
-    let selectedItemKeys: Set<string> = $state(new Set());
     let actionBusy = $state(false);
+    const selection = new Selection<EmailListItem>((item) => item.key);
 
     const getRepresentative = (item: EmailListItem) => item.representative;
 
@@ -62,22 +63,12 @@
     let listItems = $derived(buildListItems(messages, parseBundles));
     let messageSections = $derived(getMessageSections(listItems));
 
-    const getSelectedItems = () =>
-        listItems.filter((item) => selectedItemKeys.has(item.key));
-
     const getSelectedCommonActions = () =>
-        getCommonActions(getSelectedItems().flatMap((item) => item.actionMessages));
+        getCommonActions(selection.selected(listItems).flatMap((item) => item.actionMessages));
 
     let selectedCommonActions = $derived(getSelectedCommonActions());
-    let selectionActive = $derived(selectedItemKeys.size > 0);
-    let visibleItemKeys = $derived(listItems.map((item) => item.key));
-    let allVisibleSelected = $derived(
-        Boolean(visibleItemKeys.length)
-        && visibleItemKeys.every((key) => selectedItemKeys.has(key))
-    );
-    let someVisibleSelected = $derived(
-        visibleItemKeys.some((key) => selectedItemKeys.has(key))
-    );
+    let allVisibleSelected = $derived(selection.all(listItems));
+    let someVisibleSelected = $derived(selection.some(listItems));
 
     const panelService: PanelService = getContext(Context.PANEL_SERVICE);
     const toastService: ToastService = getContext(Context.TOAST_SERVICE)
@@ -186,7 +177,7 @@
             messages = pageToken ? [...messages, ...page.messages] : page.messages;
             nextPageToken = page.nextPageToken;
             if (!pageToken) {
-                selectedItemKeys = new Set();
+                selection.clear();
             }
         } catch (ex) {
             toastService.error({
@@ -277,36 +268,6 @@
         }
     };
 
-    const setItemsChecked = (keys: string[], checked: boolean) => {
-        const nextSelection = new Set(selectedItemKeys);
-        for (const key of keys) {
-            checked ? nextSelection.add(key) : nextSelection.delete(key);
-        }
-        selectedItemKeys = nextSelection;
-    };
-
-    const setItemChecked = (item: EmailListItem, checked: boolean) =>
-        setItemsChecked([item.key], checked);
-
-    const toggleAllVisible = () =>
-        setItemsChecked(visibleItemKeys, !allVisibleSelected);
-
-    const getSectionKeys = (section: MessageSection<EmailListItem>) =>
-        section.messages.map((item) => item.key);
-
-    const isSectionSelected = (section: MessageSection<EmailListItem>) => {
-        const keys = getSectionKeys(section);
-        return Boolean(keys.length) && keys.every((key) => selectedItemKeys.has(key));
-    };
-
-    const isSectionPartiallySelected = (section: MessageSection<EmailListItem>) => {
-        const keys = getSectionKeys(section);
-        return !isSectionSelected(section) && keys.some((key) => selectedItemKeys.has(key));
-    };
-
-    const toggleSection = (section: MessageSection<EmailListItem>) =>
-        setItemsChecked(getSectionKeys(section), !isSectionSelected(section));
-
     const getSectionDoneAction = (section: MessageSection<EmailListItem>) =>
         getCommonActions(section.messages.flatMap((item) => item.actionMessages))
             .find((action) => action.label === 'Done');
@@ -327,7 +288,7 @@
         return [...new Set(targetGroups.flat())];
     };
 
-    const runBulkAction = async (action: MessageAction, items = getSelectedItems()) => {
+    const runBulkAction = async (action: MessageAction, items = selection.selected(listItems)) => {
         if (!items.length || actionBusy) {
             return;
         }
@@ -393,8 +354,8 @@
                 class="icon-button"
                 aria-label={allVisibleSelected ? 'Clear selection' : 'Select all'}
                 title={allVisibleSelected ? 'Clear selection' : 'Select all'}
-                disabled={!visibleItemKeys.length || loading || actionBusy}
-                onclick={toggleAllVisible}
+                disabled={!listItems.length || loading || actionBusy}
+                onclick={() => selection.toggle(listItems)}
             >
                 <span class="icon">
                     {allVisibleSelected
@@ -402,7 +363,7 @@
                         : (someVisibleSelected ? 'indeterminate_check_box' : 'check_box_outline_blank')}
                 </span>
             </button>
-            {#if selectionActive}
+            {#if selection.active}
                 {#each selectedCommonActions as action (action.label)}
                     <button
                         class:active={action.isActive}
@@ -442,9 +403,9 @@
                 {#if section.label}
                     <SectionHeader
                             label={section.label}
-                            checked={isSectionPartiallySelected(section) ? 'partial' : isSectionSelected(section)}
-                            onCheckChanged={() => toggleSection(section)}
-                            selectionActive={selectionActive}
+                            checked={selection.state(section.messages)}
+                            onCheckChanged={(checked) => selection.set(section.messages, checked)}
+                            selectionActive={selection.active}
                             actionBusy={actionBusy}
                             onSectionDone={getSectionDoneAction(section) && (() => markSectionDone(section))}
                     />
@@ -456,22 +417,22 @@
                             representative={message}
                             selected={item.bundleLabelId === selectedBundleLabelId
                                 && panelService.panels.includes(bundleList)}
-                            checked={selectedItemKeys.has(item.key)}
-                            showCheckbox={selectionActive}
+                            checked={selection.has(item)}
+                            showCheckbox={selection.active}
                             actions={getCommonActions(item.actionMessages)}
                             {actionBusy}
                             onOpen={openBundle}
                             onBundleDrop={handleBundleDrop}
                             onRename={handleBundleRename}
-                            onCheckedChange={(checked) => setItemChecked(item, checked)}
+                            onCheckedChange={(checked) => selection.set([item], checked)}
                             onRunAction={(action) => runBulkAction(action, [item])}
                         />
                     {:else}
                         <EmailListEntry
                             message={message}
-                            checked={selectedItemKeys.has(item.key)}
-                            showCheckbox={selectionActive}
-                            onCheckedChange={(checked) => setItemChecked(item, checked)}
+                            checked={selection.has(item)}
+                            showCheckbox={selection.active}
+                            onCheckedChange={(checked) => selection.set([item], checked)}
                             onMessageChanged={handleMessageChanged}
                             onBundleDrop={parseBundles ? handleBundleDrop : undefined}
                         />
