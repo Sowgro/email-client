@@ -3,17 +3,14 @@
     import {Context} from "../Context";
     import EmailListEntry from "./EmailListEntry.svelte";
     import BundleListEntry from "./BundleListEntry.svelte";
-    import EmailList from "./EmailList.svelte";
     import {
         formatError,
-        listMessagePage,
         type MessagePage,
         type ParsedMessage,
     } from "../services/GmailService";
     import {
         createBundle,
         listAllMessageIds,
-        renameBundle,
     } from "../services/BundleService";
     import {PanelService} from "../services/PanelService.svelte";
     import {ToastService} from "../services/ToastService.svelte";
@@ -46,8 +43,6 @@
     let loading = $state(true);
     let bundling = $state(false);
     let emailListRoot: HTMLDivElement | undefined = $state();
-    let selectedBundleLabelId: string | undefined = $state();
-    let selectedBundleTitle: string | undefined = $state();
     let actionBusy = $state(false);
     const selection = new Selection<EmailListItem>((item) => item.key);
 
@@ -193,21 +188,6 @@
         }
     }
 
-    const requestBundleTitle = (initialTitle = ''): string | undefined => {
-        const title = window.prompt('Name this bundle', initialTitle)?.trim();
-        if (title === '') {
-            toastService.error({message: 'Bundle names cannot be empty'});
-            return undefined;
-        }
-        return title;
-    };
-
-    const openBundle = (bundleLabelId: string, bundleTitle?: string) => {
-        selectedBundleLabelId = bundleLabelId;
-        selectedBundleTitle = bundleTitle;
-        panelService.openNextTo(emailListRoot, bundleList);
-    };
-
     const handleBundleDrop = async (sourceMessageId: string, target: ParsedMessage) => {
         const source = messages.find((message) => message.id === sourceMessageId);
         if (!source || !target.id || source.id === target.id || bundling) {
@@ -216,7 +196,7 @@
 
         const title = target.bundleLabelId
             ? undefined
-            : requestBundleTitle(target.subject?.trim() || 'New bundle');
+            : 'New bundle'
         if (!target.bundleLabelId && !title) {
             return;
         }
@@ -229,38 +209,6 @@
         } catch (ex) {
             toastService.error({
                 message: 'Failed to create bundle',
-                error: formatError(ex),
-            });
-        } finally {
-            bundling = false;
-        }
-    };
-
-    const handleBundleRename = async (bundleLabelId: string, bundleTitle?: string) => {
-        if (bundling) {
-            return;
-        }
-
-        const title = requestBundleTitle(bundleTitle ?? 'Untitled bundle');
-        if (!title || title === bundleTitle) {
-            return;
-        }
-
-        bundling = true;
-        try {
-            await renameBundle(bundleLabelId, title);
-            messages = messages.map((listedMessage) =>
-                listedMessage.bundleLabelId === bundleLabelId
-                    ? {...listedMessage, bundleTitle: title}
-                    : listedMessage
-            );
-            if (selectedBundleLabelId === bundleLabelId) {
-                selectedBundleTitle = title;
-            }
-            toastService.success({message: 'Bundle renamed'});
-        } catch (ex) {
-            toastService.error({
-                message: 'Failed to rename bundle',
                 error: formatError(ex),
             });
         } finally {
@@ -319,22 +267,6 @@
         void loadMessages();
     })
 </script>
-
-{#snippet bundleList()}
-    {#if selectedBundleLabelId}
-        <EmailList
-            getMessages={(pageToken?: string) => listMessagePage({
-                pageToken,
-                labelIds: [selectedBundleLabelId!],
-                includeSpamTrash: true,
-                includeBundleSummaries: false,
-            })}
-            groupByDate
-            parseBundles={false}
-            bundleTitle={selectedBundleTitle ?? 'Untitled bundle'}
-        />
-    {/if}
-{/snippet}
 
 <svelte:window onkeydown={handleWindowKeydown}/>
 
@@ -415,17 +347,13 @@
                     {#if item.kind === 'bundle'}
                         <BundleListEntry
                             representative={message}
-                            selected={item.bundleLabelId === selectedBundleLabelId
-                                && panelService.panels.includes(bundleList)}
+                            bundleListItem={item}
                             checked={selection.has(item)}
                             showCheckbox={selection.active}
-                            actions={getCommonActions(item.actionMessages)}
-                            {actionBusy}
-                            onOpen={openBundle}
-                            onBundleDrop={handleBundleDrop}
-                            onRename={handleBundleRename}
                             onCheckedChange={(checked) => selection.set([item], checked)}
+                            onBundleDrop={handleBundleDrop}
                             onRunAction={(action) => runBulkAction(action, [item])}
+                            actions={getCommonActions(item.actionMessages)}
                         />
                     {:else}
                         <EmailListEntry
@@ -433,8 +361,8 @@
                             checked={selection.has(item)}
                             showCheckbox={selection.active}
                             onCheckedChange={(checked) => selection.set([item], checked)}
-                            onMessageChanged={handleMessageChanged}
                             onBundleDrop={parseBundles ? handleBundleDrop : undefined}
+                            onMessageChanged={handleMessageChanged}
                         />
                     {/if}
                 {/each}

@@ -7,7 +7,7 @@ interface MessageListItem {
     actionMessages: ActionableMessage[];
 }
 
-interface BundleListItem {
+export interface BundleListItem {
     kind: 'bundle';
     key: string;
     representative: ParsedMessage;
