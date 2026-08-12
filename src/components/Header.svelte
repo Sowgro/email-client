@@ -4,9 +4,11 @@
     import {Context} from "../Context";
     import {AuthService} from "../services/AuthService.svelte";
     import ContextMenu from "./ContextMenu.svelte";
+    import {GmailOperationService} from "../services/GmailOperationService.svelte";
 
     let router: Router = getContext(Context.ROUTER)
     let auth: AuthService = getContext(Context.AUTH_SERVICE)
+    let operationService: GmailOperationService = getContext(Context.GMAIL_OPERATION_SERVICE)
 
     let searchQuery = $state('')
 
@@ -51,6 +53,9 @@
         <ContextMenu label="Account menu">
             {#snippet trigger({toggle})}
                 <button class="icon-button dropdown" onclick={toggle} >
+                    {#if (operationService.busy)}
+                        <span class="icon sync-icon">sync</span>
+                    {/if}
                     {auth.profile?.emailAddress ?? 'Google account'}
                     <span class="icon" aria-hidden="true">arrow_drop_down</span>
                 </button>
@@ -112,5 +117,18 @@
         span {
             font-size: 20px;
         }
+    }
+
+    @keyframes spin {
+        from {
+            transform: rotate(0deg);
+        }
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .sync-icon {
+        animation: spin 2s linear infinite;
     }
 </style>
