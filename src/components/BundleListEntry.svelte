@@ -170,9 +170,9 @@
                 class:checked={checked}
                 onclick={() => onCheckedChange?.(!checked)}
         >
-                                <span class="icon">
-                                    {checked ? 'check_box': 'check_box_outline_blank'}
-                                </span>
+            <span class="icon">
+                {checked ? 'check_box': 'check_box_outline_blank'}
+            </span>
         </button>
     </div>
     <span class="sender">{representative.bundleTitle ?? 'Untitled bundle'} <span class="count">({count})</span></span>

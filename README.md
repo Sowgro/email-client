@@ -25,10 +25,10 @@ An incomplete web email client currently using Google's gmail API
    ```
 
 ### todo [ai generated]
-- [ ] Multi-select and bulk actions.
+- [x] Multi-select and bulk actions.
+- [ ] Read/unread
 - [ ] Auto-bundle categories
 - [ ] important labels and custom Gmail label management.
-- [ ] Read/unread
 - [ ] Fix sender display
 - [ ] Fix date display
 - [ ] Sender icons

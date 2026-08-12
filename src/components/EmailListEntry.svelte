@@ -132,6 +132,7 @@
     class:selected={panelService.panels.includes(emailView)}
     class:selection-visible={showCheckbox || checked}
     class:drag-over={dragOver}
+    class:unread={message.unread}
     class="email"
     role="button"
     tabindex="0"
@@ -149,9 +150,9 @@
                 class:checked={checked}
                 onclick={() => onCheckedChange?.(!checked)}
         >
-                                <span class="icon">
-                                    {checked ? 'check_box': 'check_box_outline_blank'}
-                                </span>
+            <span class="icon">
+                {checked ? 'check_box': 'check_box_outline_blank'}
+            </span>
         </button>
     </div>
     <span class="sender">{message.sender ?? "Unknown sender"}</span>
@@ -248,5 +249,9 @@
 
     .section-select.checked {
         color: #e083ff;
+    }
+
+    .unread {
+        font-weight: 600;
     }
 </style>
