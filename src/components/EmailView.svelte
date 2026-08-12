@@ -11,7 +11,7 @@
         type ParsedMessage
     } from "../services/GmailService";
     import {getRelevantActions, type MessageAction} from "../MessageActions";
-    import type {MessageActionService} from "../services/MessageActionService.svelte";
+    import type {GmailOperationService} from "../services/GmailOperationService.svelte";
 
     let {
         message,
@@ -27,7 +27,7 @@
 
     let ps: PanelService = getContext(Context.PANEL_SERVICE)
     let toastService: ToastService = getContext(Context.TOAST_SERVICE)
-    let messageActionService: MessageActionService = getContext(Context.MESSAGE_ACTION_SERVICE)
+    let gmailOperations: GmailOperationService = getContext(Context.GMAIL_OPERATION_SERVICE)
 
     let downloadingAttachmentId: string | undefined = $state();
     let actions: MessageAction[] = $derived(getRelevantActions(message));
@@ -41,7 +41,7 @@
             return;
         }
 
-        const executed = await messageActionService.run(action, message.id);
+        const executed = await gmailOperations.runMessageAction(action, message.id);
         if (!executed) {
             return;
         }
@@ -66,7 +66,7 @@
         downloadingAttachmentId = attachment.id;
 
         try {
-            await downloadAttachment(message, attachment);
+            await gmailOperations.run(() => downloadAttachment(message, attachment));
         } catch (ex) {
             toastService.error({
                 message: "An error occurred while downloading the attachment",
@@ -110,17 +110,17 @@
                         class="icon-button"
                         aria-label={action.label}
                         title={action.label}
-                        disabled={!message.id || messageActionService.busy}
+                        disabled={!message.id || gmailOperations.messageActionBusy}
                         onclick={() => runAction(action)}
                     >
                         <span class="icon">{action.icon}</span>
                     </button>
                 {/each}
-                <ContextMenu disabled={messageActionService.busy}>
+                <ContextMenu disabled={gmailOperations.messageActionBusy}>
                     {#each actions.slice(3) as action (action.label)}
                         <button
                                 role="menuitem"
-                                disabled={!message.id || messageActionService.busy}
+                                disabled={!message.id || gmailOperations.messageActionBusy}
                                 onclick={() => runAction(action)}
                         >
                             <span class="icon">{action.icon}</span>

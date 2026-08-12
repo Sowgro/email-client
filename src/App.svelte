@@ -7,18 +7,18 @@
   import {Context} from "./Context";
   import {Router} from "./services/Router.svelte";
   import {AuthService} from "./services/AuthService.svelte";
-  import {MessageActionService} from "./services/MessageActionService.svelte";
+  import {GmailOperationService} from "./services/GmailOperationService.svelte";
 
   const toastService = new ToastService()
   setContext(Context.TOAST_SERVICE, toastService)
 
-  const messageActionService = new MessageActionService(toastService)
-  setContext(Context.MESSAGE_ACTION_SERVICE, messageActionService)
+  const gmailOperationService = new GmailOperationService(toastService)
+  setContext(Context.GMAIL_OPERATION_SERVICE, gmailOperationService)
 
   const router = new Router()
   setContext(Context.ROUTER, router)
 
-  const authService = new AuthService()
+  const authService = new AuthService(gmailOperationService)
   setContext(Context.AUTH_SERVICE, authService)
 
   onMount(() => {

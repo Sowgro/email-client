@@ -1,3 +1,5 @@
+import type {GmailOperationService} from "./GmailOperationService.svelte";
+
 export interface AccountProfile {
     emailAddress: string;
 }
@@ -50,6 +52,8 @@ export class AuthService {
     private refreshTimer: ReturnType<typeof setTimeout> | undefined;
     private initialization: Promise<void> | undefined;
     private rejectTokenRequest: ((reason: Error) => void) | undefined;
+
+    constructor(private readonly gmailOperations: GmailOperationService) {}
 
     public initialize(): Promise<void> {
         if (!this.initialization) {
@@ -193,7 +197,9 @@ export class AuthService {
     }
 
     private async loadProfile() {
-        const response = await gapi.client.gmail.users.getProfile({userId: 'me'});
+        const response = await this.gmailOperations.run(() =>
+            gapi.client.gmail.users.getProfile({userId: 'me'})
+        );
         if (!response.result.emailAddress) {
             throw new Error('Google did not return an email address for this account.');
         }

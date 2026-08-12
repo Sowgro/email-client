@@ -14,7 +14,7 @@
     } from "../services/BundleService";
     import {PanelService} from "../services/PanelService.svelte";
     import {ToastService} from "../services/ToastService.svelte";
-    import {MessageActionService} from "../services/MessageActionService.svelte";
+    import {GmailOperationService} from "../services/GmailOperationService.svelte";
     import {type MessageSection, sortDate, sortPinned} from "../MessageSorter";
     import {buildListItems, type EmailListItem} from "../EmailListItem";
     import {Selection} from "../Selection.svelte";
@@ -66,7 +66,7 @@
 
     const panelService: PanelService = getContext(Context.PANEL_SERVICE);
     const toastService: ToastService = getContext(Context.TOAST_SERVICE)
-    const messageActionService: MessageActionService = getContext(Context.MESSAGE_ACTION_SERVICE)
+    const gmailOperations: GmailOperationService = getContext(Context.GMAIL_OPERATION_SERVICE)
 
     const getSelectedMessage = () =>
         emailListRoot?.querySelector<HTMLElement>('.email.selected');
@@ -168,7 +168,7 @@
     async function loadMessages(pageToken?: string) {
         loading = true;
         try {
-            const page = await getMessages(pageToken);
+            const page = await gmailOperations.run(() => getMessages(pageToken));
             messages = pageToken ? [...messages, ...page.messages] : page.messages;
             nextPageToken = page.nextPageToken;
             if (!pageToken) {
@@ -203,7 +203,7 @@
 
         bundling = true;
         try {
-            await createBundle(source, target, title);
+            await gmailOperations.run(() => createBundle(source, target, title));
             await loadMessages();
             toastService.success({message: target.bundleLabelId ? 'Email added to bundle' : 'Bundle created'});
         } catch (ex) {
@@ -237,12 +237,12 @@
     };
 
     const runBulkAction = async (action: MessageAction, items = selection.selected(listItems)) => {
-        if (!items.length || messageActionService.busy) {
+        if (!items.length || gmailOperations.messageActionBusy) {
             return;
         }
 
         let messageIds: string[] = [];
-        const executed = await messageActionService.runBulk(action, async () => {
+        const executed = await gmailOperations.runBulkMessageAction(action, async () => {
             messageIds = await resolveActionTargetIds(items);
             return messageIds;
         });
@@ -279,7 +279,7 @@
                 class="icon-button"
                 aria-label={allVisibleSelected ? 'Clear selection' : 'Select all'}
                 title={allVisibleSelected ? 'Clear selection' : 'Select all'}
-                disabled={!listItems.length || loading || messageActionService.busy}
+                disabled={!listItems.length || loading || gmailOperations.messageActionBusy}
                 onclick={() => selection.toggle(listItems)}
             >
                 <span class="icon">
@@ -295,7 +295,7 @@
                         class="icon-button"
                         aria-label={`${action.label} selected`}
                         title={action.label}
-                        disabled={messageActionService.busy}
+                        disabled={gmailOperations.messageActionBusy}
                         onclick={() => runBulkAction(action)}
                     >
                         <span class="icon">{action.icon}</span>

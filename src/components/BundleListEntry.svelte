@@ -8,7 +8,7 @@
     import EmailList from "./EmailList.svelte";
     import type {BundleListItem} from "../EmailListItem";
     import type {ToastService} from "../services/ToastService.svelte";
-    import type {MessageActionService} from "../services/MessageActionService.svelte";
+    import type {GmailOperationService} from "../services/GmailOperationService.svelte";
 
     let {
         representative,
@@ -32,7 +32,7 @@
 
     let panelService: PanelService = getContext(Context.PANEL_SERVICE)
     let toastService: ToastService = getContext(Context.TOAST_SERVICE)
-    let messageActionService: MessageActionService = getContext(Context.MESSAGE_ACTION_SERVICE)
+    let gmailOperations: GmailOperationService = getContext(Context.GMAIL_OPERATION_SERVICE)
 
     let emailRoot: HTMLDivElement | undefined = $state();
     let bundling: boolean = $state(false)
@@ -70,7 +70,7 @@
 
         bundling = true;
         try {
-            await renameBundle(bundleLabelId, title);
+            await gmailOperations.run(() => renameBundle(bundleLabelId, title));
             // messages = messages.map((listedMessage) =>
             //     listedMessage.bundleLabelId === bundleLabelId
             //         ? {...listedMessage, bundleTitle: title}
@@ -185,7 +185,7 @@
                 class="icon-button"
                 aria-label={`${action.label} for bundle`}
                 title={action.label}
-                disabled={messageActionService.busy}
+                disabled={gmailOperations.messageActionBusy}
                 onclick={() => onRunAction(action)}
             >
                 <span class="icon">{action.icon}</span>
@@ -195,7 +195,7 @@
             class="icon-button"
             aria-label="Rename bundle"
             title="Rename bundle"
-            disabled={messageActionService.busy || bundling}
+            disabled={gmailOperations.messageActionBusy || bundling}
             onclick={() => representative.bundleLabelId
                 && handleBundleRename(representative.bundleLabelId, representative.bundleTitle)}
         >

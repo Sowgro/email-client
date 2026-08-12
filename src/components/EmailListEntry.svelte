@@ -6,7 +6,7 @@
     import type {ParsedMessage} from "../services/GmailService";
     import {getRelevantActions, type MessageAction} from "../MessageActions";
     import type {ToastService} from "../services/ToastService.svelte";
-    import type {MessageActionService} from "../services/MessageActionService.svelte";
+    import type {GmailOperationService} from "../services/GmailOperationService.svelte";
 
     let {
         message,
@@ -30,7 +30,7 @@
 
     let panelService: PanelService = getContext(Context.PANEL_SERVICE)
     let toastService: ToastService = getContext(Context.TOAST_SERVICE)
-    let messageActionService: MessageActionService = getContext(Context.MESSAGE_ACTION_SERVICE)
+    let gmailOperations: GmailOperationService = getContext(Context.GMAIL_OPERATION_SERVICE)
     let emailRoot: HTMLDivElement | undefined = $state();
     let dragOver = $state(false);
 
@@ -100,7 +100,7 @@
             return;
         }
 
-        const executed = await messageActionService.run(action, message.id);
+        const executed = await gmailOperations.runMessageAction(action, message.id);
         if (!executed) {
             return;
         }
@@ -167,7 +167,7 @@
                     class="icon-button"
                     aria-label={action.label}
                     title={action.label}
-                    disabled={!message.id || messageActionService.busy}
+                    disabled={!message.id || gmailOperations.messageActionBusy}
                     onclick={() => runAction(action)}
             >
                 <span class="icon">{action.icon}</span>

@@ -1,7 +1,7 @@
 <script lang="ts">
     import {getContext} from "svelte";
     import {Context} from "../Context";
-    import type {MessageActionService} from "../services/MessageActionService.svelte";
+    import type {GmailOperationService} from "../services/GmailOperationService.svelte";
 
     let props: {
         label: string,
@@ -11,7 +11,7 @@
         onSectionDone?: () => void
     } = $props();
 
-    const messageActionService: MessageActionService = getContext(Context.MESSAGE_ACTION_SERVICE);
+    const gmailOperations: GmailOperationService = getContext(Context.GMAIL_OPERATION_SERVICE);
 </script>
 
 <h2 class="section-heading">
@@ -21,7 +21,7 @@
                 class="icon-button section-select"
                 aria-label={`Select all in ${props.label}`}
                 title={`Select all in ${props.label}`}
-                disabled={messageActionService.busy}
+                disabled={gmailOperations.messageActionBusy}
                 onclick={() => props.onCheckChanged(props.checked !== true)}
         >
             {#if props.checked === true}
@@ -38,7 +38,7 @@
             class="icon-button section-done"
             aria-label={`Mark all in ${props.label} as done`}
             title="Mark all as done"
-            disabled={messageActionService.busy || !props.onSectionDone}
+            disabled={gmailOperations.messageActionBusy || !props.onSectionDone}
             onclick={props.onSectionDone}
     >
         <span class="icon">done_all</span>
