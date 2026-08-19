@@ -26,7 +26,7 @@ An incomplete web email client currently using Google's gmail API
 
 ### todo [ai generated]
 - [x] Multi-select and bulk actions.
-- [ ] Read/unread
+- [x] Read/unread
 - [ ] Auto-bundle categories
 - [ ] important labels and custom Gmail label management.
 - [ ] Fix sender display

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {getContext} from "svelte";
+    import {getContext, onMount} from "svelte";
     import {Context} from "../Context";
     import {PanelService} from "../services/PanelService.svelte";
     import {ToastService} from "../services/ToastService.svelte";
@@ -7,6 +7,7 @@
     import {
         downloadAttachment,
         formatError,
+        modifyMessageLabels,
         type ParsedAttachment,
         type ParsedMessage
     } from "../services/GmailService";
@@ -31,6 +32,36 @@
 
     let downloadingAttachmentId: string | undefined = $state();
     let actions: MessageAction[] = $derived(getRelevantActions(message));
+
+    const MARK_AS_READ_DELAY_MS = 3_000;
+
+    onMount(() => {
+        const messageId = message.id;
+        if (!messageId || !message.unread) {
+            return;
+        }
+
+        const timeoutId = window.setTimeout(async () => {
+            if (message.id !== messageId || !message.unread) {
+                return;
+            }
+
+            try {
+                await gmailOperations.run(() => modifyMessageLabels(messageId, [], ['UNREAD']));
+                onMessageChanged?.(messageId, {
+                    unread: false,
+                    labelIds: message.labelIds.filter((labelId) => labelId !== 'UNREAD'),
+                });
+            } catch (ex) {
+                toastService.error({
+                    message: "Failed to mark message as read",
+                    error: formatError(ex),
+                });
+            }
+        }, MARK_AS_READ_DELAY_MS);
+
+        return () => window.clearTimeout(timeoutId);
+    });
 
     function closePanel() {
         ps.panels = ps.panels.slice(0, -1);
