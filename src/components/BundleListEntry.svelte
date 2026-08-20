@@ -9,6 +9,7 @@
     import type {BundleListItem} from "../EmailListItem";
     import type {ToastService} from "../services/ToastService.svelte";
     import type {GmailOperationService} from "../services/GmailOperationService.svelte";
+    import {formatListDate} from "../ListDateFormatter";
 
     let {
         representative,
@@ -177,7 +178,7 @@
     </div>
     <span class="sender">{representative.bundleTitle ?? 'Untitled bundle'} <span class="count">({count})</span></span>
     <div class="content">{senders}</div>
-    <span class="date">{representative.date ?? "??"}</span>
+    <span class="date" title={representative.date}>{formatListDate(representative.date)}</span>
     <div class="action-group right">
         {#each actions as action (action.label)}
             <button

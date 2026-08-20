@@ -7,6 +7,7 @@
     import {getRelevantActions, type MessageAction} from "../MessageActions";
     import type {ToastService} from "../services/ToastService.svelte";
     import type {GmailOperationService} from "../services/GmailOperationService.svelte";
+    import {formatListDate} from "../ListDateFormatter";
 
     let {
         message,
@@ -160,7 +161,7 @@
         <span class="subject">{message.subject ?? "No subject"}</span>
         <span class="preview"> — {message.preview}</span>
     </div>
-    <span class="date">{message.date ?? "??"}</span>
+    <span class="date" title={message.date}>{formatListDate(message.date)}</span>
     <div class="action-group right">
         {#each actions.slice(0, 3) as action (action.label)}
             <button
