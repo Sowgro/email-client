@@ -8,6 +8,7 @@
     import type {ToastService} from "../services/ToastService.svelte";
     import type {GmailOperationService} from "../services/GmailOperationService.svelte";
     import {formatListDate} from "../DateFormatter";
+    import {formatSenderName} from "../SenderFormatter";
 
     let {
         message,
@@ -156,7 +157,7 @@
             </span>
         </button>
     </div>
-    <span class="sender">{message.sender ?? "Unknown sender"}</span>
+    <span class="sender">{formatSenderName(message.sender)}</span>
     <div class="content">
         <span class="subject">{message.subject ?? "No subject"}</span>
         <span class="preview"> — {message.preview}</span>

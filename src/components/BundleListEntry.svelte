@@ -10,6 +10,7 @@
     import type {ToastService} from "../services/ToastService.svelte";
     import type {GmailOperationService} from "../services/GmailOperationService.svelte";
     import {formatListDate} from "../DateFormatter";
+    import {formatSenderName} from "../SenderFormatter";
 
     let {
         representative,
@@ -45,9 +46,9 @@
             : String(representative.bundleSummary?.count ?? 1)
     );
     const senders = $derived(
-        representative.bundleSummary?.senders.join(', ')
-        || representative.sender
-        || 'Unknown sender'
+        representative.bundleSummary?.senders.length
+            ? representative.bundleSummary.senders.map(formatSenderName).join(', ')
+            : formatSenderName(representative.sender)
     );
 
     const requestBundleTitle = (initialTitle = ''): string | undefined => {
