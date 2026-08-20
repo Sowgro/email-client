@@ -9,7 +9,7 @@
     import type {BundleListItem} from "../EmailListItem";
     import type {ToastService} from "../services/ToastService.svelte";
     import type {GmailOperationService} from "../services/GmailOperationService.svelte";
-    import {formatListDate} from "../ListDateFormatter";
+    import {formatListDate} from "../DateFormatter";
 
     let {
         representative,

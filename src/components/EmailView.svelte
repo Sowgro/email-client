@@ -13,6 +13,7 @@
     } from "../services/GmailService";
     import {getRelevantActions, type MessageAction} from "../MessageActions";
     import type {GmailOperationService} from "../services/GmailOperationService.svelte";
+    import {formatEmailViewDate} from "../DateFormatter";
 
     let {
         message,
@@ -31,7 +32,9 @@
     let gmailOperations: GmailOperationService = getContext(Context.GMAIL_OPERATION_SERVICE)
 
     let downloadingAttachmentId: string | undefined = $state();
+    let currentTime = $state(new Date());
     let actions: MessageAction[] = $derived(getRelevantActions(message));
+    let formattedDate = $derived(formatEmailViewDate(message.date, currentTime));
 
     const MARK_AS_READ_DELAY_MS = 3_000;
 
@@ -61,6 +64,14 @@
         }, MARK_AS_READ_DELAY_MS);
 
         return () => window.clearTimeout(timeoutId);
+    });
+
+    onMount(() => {
+        const intervalId = window.setInterval(() => {
+            currentTime = new Date();
+        }, 60_000);
+
+        return () => window.clearInterval(intervalId);
     });
 
     function closePanel() {
@@ -162,7 +173,7 @@
             </div>
         </div>
         <span class="subject">{message.subject}</span>
-        <span class="sender">From: {message.sender}</span>
+        <span class="sender">{message.sender}, {formattedDate}</span>
 
         {#if message.attachments.length}
             <div class="attachments">

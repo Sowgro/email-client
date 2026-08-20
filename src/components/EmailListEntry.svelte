@@ -7,7 +7,7 @@
     import {getRelevantActions, type MessageAction} from "../MessageActions";
     import type {ToastService} from "../services/ToastService.svelte";
     import type {GmailOperationService} from "../services/GmailOperationService.svelte";
-    import {formatListDate} from "../ListDateFormatter";
+    import {formatListDate} from "../DateFormatter";
 
     let {
         message,
