@@ -53,9 +53,7 @@
         <ContextMenu label="Account menu">
             {#snippet trigger({toggle})}
                 <button class="icon-button dropdown" onclick={toggle} >
-                    {#if (operationService.busy)}
-                        <span class="icon sync-icon">sync</span>
-                    {/if}
+                    <span class="icon sync-icon" class:enabled={operationService.busy} >sync</span>
                     {auth.profile?.emailAddress ?? 'Google account'}
                     <span class="icon" aria-hidden="true">arrow_drop_down</span>
                 </button>
@@ -130,5 +128,10 @@
 
     .sync-icon {
         animation: spin 2s linear infinite;
+        opacity: 0;
+
+        &.enabled {
+            opacity: 1;
+        }
     }
 </style>
