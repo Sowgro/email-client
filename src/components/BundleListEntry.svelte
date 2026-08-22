@@ -11,6 +11,7 @@
     import type {GmailOperationService} from "../services/GmailOperationService.svelte";
     import {formatListDate} from "../DateFormatter";
     import {formatSenderName} from "../SenderFormatter";
+    import SenderAvatar from "./SenderAvatar.svelte";
 
     let {
         representative,
@@ -177,7 +178,14 @@
             </span>
         </button>
     </div>
-    <span class="sender">{representative.bundleTitle ?? 'Untitled bundle'} <span class="count">({count})</span></span>
+    <div class="sender">
+        <span class="bundle-icon">
+            <span class="icon">inbox</span>
+        </span>
+        <span class="sender-name">
+            {representative.bundleTitle ?? 'Untitled bundle'} <span class="count">({count})</span>
+        </span>
+    </div>
     <div class="content">{senders}</div>
     <span class="date" title={representative.date}>{formatListDate(representative.date)}</span>
     <div class="action-group right">
@@ -215,6 +223,20 @@
 
     .date {
         text-align: right;
+    }
+
+    .sender {
+        display: flex;
+    }
+
+    .bundle-icon {
+        display: flex;
+        width: 28px;
+        height: 28px;
+        margin-right: 8px;
+        justify-content: center;
+        align-items: center;
+        font-size: 20px;
     }
 
     .email {

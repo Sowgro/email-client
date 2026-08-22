@@ -9,6 +9,7 @@
     import type {GmailOperationService} from "../services/GmailOperationService.svelte";
     import {formatListDate} from "../DateFormatter";
     import {formatSenderName} from "../SenderFormatter";
+    import SenderAvatar from "./SenderAvatar.svelte";
 
     let {
         message,
@@ -157,7 +158,10 @@
             </span>
         </button>
     </div>
-    <span class="sender">{formatSenderName(message.sender)}</span>
+    <div class="sender">
+        <SenderAvatar sender={message.sender}/>
+        <span class="sender-name">{formatSenderName(message.sender)}</span>
+    </div>
     <div class="content">
         <span class="subject">{message.subject ?? "No subject"}</span>
         <span class="preview"> — {message.preview}</span>
@@ -188,6 +192,17 @@
 
     .date {
         text-align: right;
+    }
+
+    .sender {
+        align-items: center;
+        display: flex;
+        gap: 8px;
+    }
+
+    .sender-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .email {

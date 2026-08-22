@@ -4,8 +4,8 @@ An incomplete web email client currently using Google's gmail API
 ### setup
 
 1. In the [Google Cloud console](https://console.cloud.google.com/), create or select a project.
-2. Enable the **Gmail API** under **APIs & Services → Library**.
-3. Configure the OAuth consent screen. While the app is in testing, add the Google accounts that will use it as test users.
+2. Enable the **Gmail API** and **People API** under **APIs & Services → Library**.
+3. Configure the OAuth consent screen with Gmail access and the `contacts.readonly` scope. While the app is in testing, add the Google accounts that will use it as test users.
 4. Under **APIs & Services → Credentials**, create an **API key**. Restrict it to the Gmail API and use **Websites** application restrictions for the URLs where this app runs.
 5. Create an **OAuth client ID** with application type **Web application**. Add the app origins, such as `http://localhost:5173`, to **Authorized JavaScript origins**.
 6. Copy `.env.example` to `.env` and set:

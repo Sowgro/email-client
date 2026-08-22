@@ -8,6 +8,7 @@
   import {Router} from "./services/Router.svelte";
   import {AuthService} from "./services/AuthService.svelte";
   import {GmailOperationService} from "./services/GmailOperationService.svelte";
+  import {SenderAvatarService} from "./services/SenderAvatarService";
 
   const toastService = new ToastService()
   setContext(Context.TOAST_SERVICE, toastService)
@@ -20,6 +21,13 @@
 
   const authService = new AuthService(gmailOperationService)
   setContext(Context.AUTH_SERVICE, authService)
+
+  const senderAvatarService = new SenderAvatarService()
+  setContext(Context.SENDER_AVATAR_SERVICE, senderAvatarService)
+
+  $effect(() => {
+    senderAvatarService.setAccount(authService.profile?.emailAddress)
+  })
 
   onMount(() => {
     authService.initialize()

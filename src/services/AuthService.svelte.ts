@@ -36,8 +36,12 @@ interface GoogleIdentityServices {
 }
 
 const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest';
-const SCOPES = 'https://mail.google.com/';
-const STORAGE_KEY = 'fettuccemail.google-token';
+const SCOPES = [
+    'https://mail.google.com/',
+    'https://www.googleapis.com/auth/contacts.readonly',
+].join(' ');
+const STORAGE_KEY = 'fettuccemail.google-token.v2';
+const LEGACY_STORAGE_KEY = 'fettuccemail.google-token';
 const REFRESH_MARGIN_MS = 60_000;
 
 export class AuthService {
@@ -137,6 +141,7 @@ export class AuthService {
                 },
             });
 
+            sessionStorage.removeItem(LEGACY_STORAGE_KEY);
             await this.restoreSession();
         } catch (error) {
             this.error = getErrorMessage(error);
@@ -231,6 +236,7 @@ export class AuthService {
             this.refreshTimer = undefined;
         }
         sessionStorage.removeItem(STORAGE_KEY);
+        sessionStorage.removeItem(LEGACY_STORAGE_KEY);
         gapi.client.setToken(null);
         this.expiresAt = 0;
         this.profile = undefined;
