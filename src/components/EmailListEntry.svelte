@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {getContext} from "svelte";
+    import {getContext, type Snippet} from "svelte";
     import {Context} from "../Context";
     import {PanelService} from "../services/PanelService.svelte";
     import EmailView from "./EmailView.svelte";
@@ -10,6 +10,7 @@
     import {formatListDate} from "../DateFormatter";
     import {formatSenderName} from "../SenderFormatter";
     import SenderAvatar from "./SenderAvatar.svelte";
+    import ListEntryFrame from "./ListEntryFrame.svelte";
 
     let {
         message,
@@ -18,6 +19,7 @@
         onCheckedChange,
         onMessageChanged,
         onBundleDrop,
+        parentListSnippet,
     }: {
         message: ParsedMessage,
         checked?: boolean,
@@ -29,36 +31,12 @@
             removeFromList?: boolean,
         ) => boolean,
         onBundleDrop?: (sourceMessageId: string, target: ParsedMessage) => void,
+        parentListSnippet: Snippet
     } = $props();
 
     let panelService: PanelService = getContext(Context.PANEL_SERVICE)
     let toastService: ToastService = getContext(Context.TOAST_SERVICE)
     let gmailOperations: GmailOperationService = getContext(Context.GMAIL_OPERATION_SERVICE)
-    let emailRoot: HTMLDivElement | undefined = $state();
-    let dragOver = $state(false);
-
-    const openPanel = () => {
-        panelService.openNextTo(emailRoot, emailView);
-    }
-
-    const handleClick = (event: MouseEvent) => {
-        if (event.target instanceof Element && event.target.closest('.action-group')) {
-            return;
-        }
-
-        openPanel();
-    }
-
-    const handleKeydown = (event: KeyboardEvent) => {
-        if (event.target !== event.currentTarget) {
-            return;
-        }
-
-        if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            openPanel();
-        }
-    }
 
     const actions = $derived(getRelevantActions(message));
 
@@ -84,11 +62,9 @@
         if (event.dataTransfer) {
             event.dataTransfer.dropEffect = 'move';
         }
-        dragOver = true;
     };
 
     const handleDrop = (event: DragEvent) => {
-        dragOver = false;
         const sourceMessageId = event.dataTransfer?.getData('application/x-fettuccemail-message');
         if (!sourceMessageId || sourceMessageId === message.id) {
             return;
@@ -130,145 +106,36 @@
     <EmailView {message} {onMessageChanged}/>
 {/snippet}
 
-<div
-    bind:this={emailRoot}
-    class:selected={panelService.panels.includes(emailView)}
-    class:selection-visible={showCheckbox || checked}
-    class:drag-over={dragOver}
-    class:unread={message.unread}
-    class="email"
-    role="button"
-    tabindex="0"
-    draggable={Boolean(onBundleDrop) && Boolean(message.id)}
-    onclick={handleClick}
-    onkeydown={handleKeydown}
-    ondragstart={handleDragStart}
-    ondragover={handleDragOver}
-    ondragleave={() => dragOver = false}
-    ondrop={handleDrop}
+<ListEntryFrame
+        showCheckbox={showCheckbox}
+        checked={checked}
+        onCheckedChange={onCheckedChange!}
+        unread={message.unread}
+        actions={actions.slice(0, 3)}
+        runAction={runAction}
+        selected={!!panelService.panels.find(i => i === emailView)}
+        onSelect={() => panelService.openNextTo(parentListSnippet, emailView)}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
 >
-    <div class="action-group left">
-        <button
-                class="icon-button section-select"
-                class:checked={checked}
-                onclick={() => onCheckedChange?.(!checked)}
-        >
-            <span class="icon">
-                {checked ? 'check_box': 'check_box_outline_blank'}
-            </span>
-        </button>
-    </div>
-    <div class="sender">
+    {#snippet avatar()}
         <SenderAvatar sender={message.sender}/>
+    {/snippet}
+    {#snippet sender()}
         <span class="sender-name">{formatSenderName(message.sender)}</span>
-    </div>
-    <div class="content">
+    {/snippet}
+    {#snippet content()}
         <span class="subject">{message.subject ?? "No subject"}</span>
         <span class="preview"> — {message.preview}</span>
-    </div>
-    <span class="date" title={message.date}>{formatListDate(message.date)}</span>
-    <div class="action-group right">
-        {#each actions.slice(0, 3) as action (action.label)}
-            <button
-                    class:active={action.isActive}
-                    class="icon-button"
-                    aria-label={action.label}
-                    title={action.label}
-                    disabled={!message.id || gmailOperations.messageActionBusy}
-                    onclick={() => runAction(action)}
-            >
-                <span class="icon">{action.icon}</span>
-            </button>
-        {/each}
-    </div>
-</div>
+    {/snippet}
+    {#snippet date()}
+        <span class="date" title={message.date}>{formatListDate(message.date)}</span>
+    {/snippet}
+</ListEntryFrame>
 
 <style>
-    .sender, .content, .date {
-        min-width: 0;
-        white-space: nowrap;
-        overflow: hidden;
-    }
-
-    .date {
-        text-align: right;
-    }
-
-    .sender {
-        align-items: center;
-        display: flex;
-        gap: 8px;
-    }
-
-    .sender-name {
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .email {
-        padding: 7px;
-        display: grid;
-        grid-template-columns: 20% minmax(0, 1fr) 100px;
-        column-gap: 20px;
-        user-select: none;
-        position: relative;
-    }
-
-    .email:focus {
-        outline: none;
-    }
-
-    .email.selected {
-        background-color: rgba(224, 131, 255, 0.1);
-    }
-
-    .email.selected:hover {
-        background-color: rgba(112, 67, 128, 0.1);
-    }
-
-    .email.drag-over {
-        background-color: rgba(224, 131, 255, 0.18);
-        box-shadow: inset 0 0 0 2px #e083ff;
-    }
-
-    .email:hover {
-        background-color: rgba(0, 0, 0, 0.1);
-    }
-
-    .email .preview {
+    .preview {
         color: rgba(239, 239, 239, 0.5);
-    }
-
-    .action-group {
-        display: none;
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        background-color: #232323;
-        padding: 5px;
-
-        &.right {
-            right: 0;
-        }
-
-        &.left {
-            left: 0;
-        }
-    }
-
-    .email:hover .action-group {
-        display: flex;
-    }
-
-    .email.selection-visible .action-group.left {
-        display: flex;
-    }
-
-    .section-select.checked {
-        color: #e083ff;
-    }
-
-    .unread {
-        font-weight: 600;
     }
 </style>

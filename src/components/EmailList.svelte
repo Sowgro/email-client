@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {getContext, onMount} from "svelte";
+    import {getContext, onMount, type Snippet} from "svelte";
     import {Context} from "../Context";
     import EmailListEntry from "./EmailListEntry.svelte";
     import BundleListEntry from "./BundleListEntry.svelte";
@@ -30,12 +30,14 @@
         groupPins = false,
         parseBundles = true,
         bundleTitle,
+        selfSnippet
     }: {
         getMessages: (pageToken?: string) => Promise<MessagePage>,
         groupByDate?: boolean,
         groupPins?: boolean,
         parseBundles?: boolean,
         bundleTitle?: string,
+        selfSnippet?: Snippet
     } = $props()
 
     let messages: ParsedMessage[] = $state([]);
@@ -346,6 +348,7 @@
                             onBundleDrop={handleBundleDrop}
                             onRunAction={(action) => runBulkAction(action, [item])}
                             actions={getCommonActions(item.actionMessages)}
+                            parentListSnippet={selfSnippet ?? panelService.panels[0]}
                         />
                     {:else}
                         <EmailListEntry
@@ -355,6 +358,7 @@
                             onCheckedChange={(checked) => selection.set([item], checked)}
                             onBundleDrop={parseBundles ? handleBundleDrop : undefined}
                             onMessageChanged={handleMessageChanged}
+                            parentListSnippet={selfSnippet ?? panelService.panels[0]}
                         />
                     {/if}
                 {/each}

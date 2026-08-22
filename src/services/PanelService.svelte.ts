@@ -15,11 +15,9 @@ class PanelService {
         this.panels.pop();
     }
 
-    public openNextTo(element: Element | undefined, snippet: Snippet) {
-        const panelSlot = element?.closest('.panel-slot');
-        const panelSlots = Array.from(document.querySelectorAll('#panels > .panel-slot'));
-        const panelIndex = panelSlot ? panelSlots.indexOf(panelSlot) : this.panels.length - 1;
-        this.panels = [...this.panels.slice(0, panelIndex + 1), snippet];
+    public openNextTo(target: Snippet, next: Snippet) {
+        let panelIndex = this.panels.indexOf(target)
+        this.panels = [...this.panels.slice(0, panelIndex + 1), next];
     }
 }
 

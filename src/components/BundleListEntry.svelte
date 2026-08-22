@@ -2,7 +2,7 @@
     import {formatError, listMessagePage, type ParsedMessage} from "../services/GmailService";
     import type {MessageAction} from "../MessageActions";
     import {PanelService} from "../services/PanelService.svelte";
-    import {getContext} from "svelte";
+    import {getContext, type Snippet} from "svelte";
     import {Context} from "../Context";
     import {renameBundle} from "../services/BundleService";
     import EmailList from "./EmailList.svelte";
@@ -11,7 +11,7 @@
     import type {GmailOperationService} from "../services/GmailOperationService.svelte";
     import {formatListDate} from "../DateFormatter";
     import {formatSenderName} from "../SenderFormatter";
-    import SenderAvatar from "./SenderAvatar.svelte";
+    import ListEntryFrame from "./ListEntryFrame.svelte";
 
     let {
         representative,
@@ -22,6 +22,7 @@
         onBundleDrop,
         onCheckedChange,
         onRunAction,
+        parentListSnippet
     }: {
         representative: ParsedMessage,
         bundleListItem: BundleListItem,
@@ -31,16 +32,15 @@
         onBundleDrop: (sourceMessageId: string, target: ParsedMessage) => void,
         onCheckedChange?: (checked: boolean) => void,
         onRunAction: (action: MessageAction) => void,
+        parentListSnippet: Snippet
     } = $props();
 
     let panelService: PanelService = getContext(Context.PANEL_SERVICE)
     let toastService: ToastService = getContext(Context.TOAST_SERVICE)
     let gmailOperations: GmailOperationService = getContext(Context.GMAIL_OPERATION_SERVICE)
 
-    let emailRoot: HTMLDivElement | undefined = $state();
     let bundling: boolean = $state(false)
 
-    let dragOver = $state(false);
     const count = $derived(
         representative.bundleSummary?.hasMore
             ? '25+'
@@ -90,31 +90,6 @@
         }
     };
 
-    const openBundle = () => {
-        if (representative.bundleLabelId) {
-            panelService.openNextTo(emailRoot, bundleList);
-        }
-    };
-
-    const handleClick = (event: MouseEvent) => {
-        if (event.target instanceof Element && event.target.closest('.action-group')) {
-            return;
-        }
-
-        openBundle();
-    };
-
-    const handleKeydown = (event: KeyboardEvent) => {
-        if (event.target !== event.currentTarget) {
-            return;
-        }
-
-        if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            openBundle();
-        }
-    };
-
     const handleDragOver = (event: DragEvent) => {
         if (!event.dataTransfer?.types.includes('application/x-fettuccemail-message')) {
             return;
@@ -122,11 +97,9 @@
 
         event.preventDefault();
         event.dataTransfer.dropEffect = 'move';
-        dragOver = true;
     };
 
     const handleDrop = (event: DragEvent) => {
-        dragOver = false;
         const sourceMessageId = event.dataTransfer?.getData('application/x-fettuccemail-message');
         if (!sourceMessageId) {
             return;
@@ -135,174 +108,56 @@
         event.preventDefault();
         onBundleDrop(sourceMessageId, representative);
     };
+
+    const renameAction: MessageAction = {
+        label: "Rename bundle",
+        icon: "edit",
+        onAction: async (_) => {
+            representative.bundleLabelId && await handleBundleRename(representative.bundleLabelId, representative.bundleTitle)
+        },
+    }
 </script>
 
 {#snippet bundleList()}
-    {#if bundleListItem.bundleLabelId}
-        <EmailList
-                getMessages={(pageToken?: string) => listMessagePage({
+    <EmailList
+            getMessages={(pageToken?: string) => listMessagePage({
                 pageToken,
                 labelIds: [bundleListItem.bundleLabelId!],
                 includeSpamTrash: true,
                 includeBundleSummaries: false,
             })}
-                groupByDate
-                parseBundles={false}
-                bundleTitle={bundleListItem.bundleTitle ?? 'Untitled bundle'}
-        />
-    {/if}
+            groupByDate
+            parseBundles={false}
+            bundleTitle={bundleListItem.bundleTitle ?? 'Untitled bundle'}
+            selfSnippet={bundleList}
+    />
 {/snippet}
 
-<div
-    bind:this={emailRoot}
-    class:selected={panelService.panels.includes(bundleList)}
-    class:selection-visible={showCheckbox || checked}
-    class:drag-over={dragOver}
-    class="email bundle"
-    role="button"
-    tabindex="0"
-    onclick={handleClick}
-    onkeydown={handleKeydown}
-    ondragover={handleDragOver}
-    ondragleave={() => dragOver = false}
-    ondrop={handleDrop}
+<ListEntryFrame
+        showCheckbox={showCheckbox}
+        checked={checked}
+        onCheckedChange={onCheckedChange!}
+        unread={representative.unread}
+        actions={[renameAction, ...actions.slice(0, 3)]}
+        runAction={onRunAction}
+        selected={!!panelService.panels.find(i => i === bundleList)}
+        onSelect={() => panelService.openNextTo(parentListSnippet, bundleList)}
+        onDragStart={() => {}}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
 >
-    <div class="action-group left">
-        <button
-                class="icon-button section-select"
-                class:checked={checked}
-                onclick={() => onCheckedChange?.(!checked)}
-        >
-            <span class="icon">
-                {checked ? 'check_box': 'check_box_outline_blank'}
-            </span>
-        </button>
-    </div>
-    <div class="sender">
-        <span class="bundle-icon">
-            <span class="icon">inbox</span>
-        </span>
+    {#snippet avatar()}
+        <span class="icon">inbox</span>
+    {/snippet}
+    {#snippet sender()}
         <span class="sender-name">
             {representative.bundleTitle ?? 'Untitled bundle'} <span class="count">({count})</span>
         </span>
-    </div>
-    <div class="content">{senders}</div>
-    <span class="date" title={representative.date}>{formatListDate(representative.date)}</span>
-    <div class="action-group right">
-        {#each actions as action (action.label)}
-            <button
-                class:active={action.isActive}
-                class="icon-button"
-                aria-label={`${action.label} for bundle`}
-                title={action.label}
-                disabled={gmailOperations.messageActionBusy}
-                onclick={() => onRunAction(action)}
-            >
-                <span class="icon">{action.icon}</span>
-            </button>
-        {/each}
-        <button
-            class="icon-button"
-            aria-label="Rename bundle"
-            title="Rename bundle"
-            disabled={gmailOperations.messageActionBusy || bundling}
-            onclick={() => representative.bundleLabelId
-                && handleBundleRename(representative.bundleLabelId, representative.bundleTitle)}
-        >
-            <span class="icon">edit</span>
-        </button>
-    </div>
-</div>
-
-<style>
-    .sender, .content, .date {
-        min-width: 0;
-        white-space: nowrap;
-        overflow: hidden;
-    }
-
-    .date {
-        text-align: right;
-    }
-
-    .sender {
-        display: flex;
-    }
-
-    .bundle-icon {
-        display: flex;
-        width: 28px;
-        height: 28px;
-        margin-right: 8px;
-        justify-content: center;
-        align-items: center;
-        font-size: 20px;
-    }
-
-    .email {
-        padding: 7px;
-        display: grid;
-        grid-template-columns: 20% minmax(0, 1fr) 100px;
-        column-gap: 20px;
-        user-select: none;
-        position: relative;
-    }
-
-    .email:focus {
-        outline: none;
-    }
-
-    .email.selected {
-        background-color: rgba(224, 131, 255, 0.1);
-    }
-
-    .email.selected:hover {
-        background-color: rgba(112, 67, 128, 0.1);
-    }
-
-    .email.drag-over {
-        background-color: rgba(224, 131, 255, 0.18);
-        box-shadow: inset 0 0 0 2px #e083ff;
-    }
-
-    .email.bundle {
-        cursor: pointer;
-    }
-
-    .email:hover {
-        background-color: rgba(0, 0, 0, 0.1);
-    }
-
-    .action-group {
-        display: none;
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        background-color: #232323;
-        padding: 5px;
-
-        &.right {
-            right: 0;
-        }
-
-        &.left {
-            left: 0;
-        }
-    }
-
-    .email:hover .action-group {
-        display: flex;
-    }
-
-    .email.selection-visible .action-group.left {
-        display: flex;
-    }
-
-    .count {
-        color: rgba(239, 239, 239, 0.7);
-    }
-
-    .section-select.checked {
-        color: #e083ff;
-    }
-</style>
+    {/snippet}
+    {#snippet content()}
+        {senders}
+    {/snippet}
+    {#snippet date()}
+        <span class="date" title={representative.date}>{formatListDate(representative.date)}</span>
+    {/snippet}
+</ListEntryFrame>
