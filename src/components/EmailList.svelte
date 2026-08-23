@@ -23,6 +23,7 @@
         type MessageAction,
     } from "../MessageActions";
     import SectionHeader from "./SectionHeader.svelte";
+    import {activateNextMessage, emailListNavigation} from "../emailListNavigation";
 
     let {
         getMessages,
@@ -70,66 +71,6 @@
     const toastService: ToastService = getContext(Context.TOAST_SERVICE)
     const gmailOperations: GmailOperationService = getContext(Context.GMAIL_OPERATION_SERVICE)
 
-    const getSelectedMessage = () =>
-        emailListRoot?.querySelector<HTMLElement>('.email.selected');
-
-    const isTextEntry = (target: EventTarget | null) =>
-        target instanceof HTMLElement
-        && Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
-
-    const handleWindowKeydown = (event: KeyboardEvent) => {
-        const currentPanelSlot = emailListRoot?.closest('.panel-slot');
-        const panelSlots = Array.from(
-            emailListRoot?.closest('#panels')?.querySelectorAll(':scope > .panel-slot') ?? []
-        );
-        const currentPanelIndex = currentPanelSlot ? panelSlots.indexOf(currentPanelSlot) : -1;
-
-        if (
-            panelService.getPanelCount() < 2
-            || currentPanelIndex !== panelService.getPanelCount() - 2
-            || event.isComposing
-            || isTextEntry(event.target)
-            || emailListRoot?.closest('#panels')?.querySelector('[role="menu"]')
-        ) {
-            return;
-        }
-
-        const selectedMessage = getSelectedMessage();
-
-        if (event.key === 'Escape') {
-            event.preventDefault();
-            selectedMessage?.focus();
-            panelService.closeLast()
-            return;
-        }
-
-        if (
-            (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')
-            || event.altKey
-            || event.ctrlKey
-            || event.metaKey
-            || event.shiftKey
-        ) {
-            return;
-        }
-
-        const listedMessages = Array.from(
-            emailListRoot?.querySelectorAll<HTMLElement>('.email') ?? []
-        );
-        const selectedIndex = selectedMessage ? listedMessages.indexOf(selectedMessage) : -1;
-        const nextIndex = selectedIndex + (event.key === 'ArrowUp' ? -1 : 1);
-        const nextMessage = listedMessages[nextIndex];
-
-        if (!nextMessage) {
-            return;
-        }
-
-        event.preventDefault();
-        nextMessage.click();
-        nextMessage.focus();
-        nextMessage.scrollIntoView({block: 'nearest'});
-    };
-
     const handleMessageChanged = (
         messageId: string,
         changes: Partial<ParsedMessage>,
@@ -142,19 +83,7 @@
             return false;
         }
 
-        const selectedMessage = getSelectedMessage();
-        const listedMessages = Array.from(
-            emailListRoot?.querySelectorAll<HTMLElement>('.email') ?? []
-        );
-        const selectedIndex = selectedMessage ? listedMessages.indexOf(selectedMessage) : -1;
-        const nextMessage = listedMessages[selectedIndex + 1];
-        const hasNextMessage = Boolean(nextMessage);
-
-        if (hasNextMessage) {
-            nextMessage!.click();
-            nextMessage!.focus();
-            nextMessage!.scrollIntoView({block: 'nearest'});
-        }
+        const hasNextMessage = activateNextMessage(emailListRoot);
 
         messages = messages.filter(({id}) => id !== messageId);
         return hasNextMessage;
@@ -302,8 +231,6 @@
 
 </script>
 
-<svelte:window onkeydown={handleWindowKeydown}/>
-
 <div class="panel email-list">
     {#if bundleInfo}
         <div class="action-bar">
@@ -378,7 +305,11 @@
     {:else if messages.length === 0}
         <span>No messages found.</span>
     {:else}
-        <div class="emailList" bind:this={emailListRoot}>
+        <div
+            class="emailList"
+            bind:this={emailListRoot}
+            use:emailListNavigation={{panelService}}
+        >
             {#each messageSections as section (section.label)}
                 {#if section.label}
                     <SectionHeader
