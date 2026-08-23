@@ -21,6 +21,9 @@ class PanelService {
     // Closes the target panel and all panels after it
     public close(target: Snippet) {
         let panelIndex = this.panels.indexOf(target)
+        if (panelIndex < 0) {
+            return;
+        }
         this.panels = this.panels.slice(0, panelIndex)
     }
 

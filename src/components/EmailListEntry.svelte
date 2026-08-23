@@ -21,6 +21,7 @@
             messageId: string,
             changes: Partial<ParsedMessage>,
             removeFromList?: boolean,
+            previewOpen?: boolean,
         ) => boolean,
         onBundleDrop?: (sourceMessageId: string, target: ParsedMessage) => void,
         parentListSnippet: Snippet
@@ -83,10 +84,15 @@
             return;
         }
 
-        const selectedReplacement =
-            props.onMessageChanged?.(props.message.id, action.changes ?? {}, action.removeFromList) ?? false;
+        const previewOpen = panelService.contains(emailView);
+        const selectedReplacement = props.onMessageChanged?.(
+            props.message.id,
+            action.changes ?? {},
+            action.removeFromList,
+            previewOpen,
+        ) ?? false;
 
-        if (action.removeFromList && !selectedReplacement) {
+        if (action.removeFromList && previewOpen && !selectedReplacement) {
             panelService.close(emailView)
         }
 
@@ -104,7 +110,12 @@
 {#snippet emailView()}
     <EmailView
             message={props.message}
-            onMessageChanged={props.onMessageChanged}
+            onMessageChanged={(messageId, changes, removeFromList) => props.onMessageChanged(
+                messageId,
+                changes,
+                removeFromList,
+                panelService.contains(emailView),
+            )}
     />
 {/snippet}
 

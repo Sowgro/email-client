@@ -40,10 +40,13 @@ export const activateNextMessage = (root?: HTMLDivElement): boolean => {
     }
 
     const selectedMessage = getSelectedMessage(root);
-    const selectedIndex = selectedMessage
-        ? getListedMessages(root).indexOf(selectedMessage)
-        : -1;
-    const nextMessage = getListedMessages(root)[selectedIndex + 1];
+    if (!selectedMessage) {
+        return false;
+    }
+
+    const listedMessages = getListedMessages(root);
+    const selectedIndex = listedMessages.indexOf(selectedMessage);
+    const nextMessage = listedMessages[selectedIndex + 1];
 
     if (!nextMessage) {
         return false;

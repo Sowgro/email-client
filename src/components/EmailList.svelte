@@ -75,6 +75,7 @@
         messageId: string,
         changes: Partial<ParsedMessage>,
         removeFromList = false,
+        previewOpen = false,
     ): boolean => {
         if (!removeFromList) {
             messages = messages.map((message) =>
@@ -83,7 +84,7 @@
             return false;
         }
 
-        const hasNextMessage = activateNextMessage(emailListRoot);
+        const hasNextMessage = previewOpen && activateNextMessage(emailListRoot);
 
         messages = messages.filter(({id}) => id !== messageId);
         return hasNextMessage;
