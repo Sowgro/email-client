@@ -17,6 +17,19 @@ const activateMessage = (message: HTMLElement) => {
     message.scrollIntoView({block: 'nearest'});
 };
 
+const activateFirstMessageInNextList = (currentPanelSlot: Element): boolean => {
+    const nextList = currentPanelSlot.nextElementSibling
+        ?.querySelector<HTMLDivElement>('.emailList');
+    const firstMessage = nextList && getListedMessages(nextList)[0];
+
+    if (!firstMessage) {
+        return false;
+    }
+
+    activateMessage(firstMessage);
+    return true;
+};
+
 const isTextEntry = (target: EventTarget | null) =>
     target instanceof HTMLElement
     && Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
@@ -72,12 +85,21 @@ export const emailListNavigation: Action<HTMLDivElement, EmailListNavigationOpti
         }
 
         if (
-            (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')
+            (event.key !== 'ArrowUp'
+                && event.key !== 'ArrowDown'
+                && event.key !== 'ArrowRight')
             || event.altKey
             || event.ctrlKey
             || event.metaKey
             || event.shiftKey
         ) {
+            return;
+        }
+
+        if (event.key === 'ArrowRight') {
+            if (currentPanelSlot && activateFirstMessageInNextList(currentPanelSlot)) {
+                event.preventDefault();
+            }
             return;
         }
 
