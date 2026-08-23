@@ -10,24 +10,14 @@
     import {formatSenderName} from "../SenderFormatter";
     import ListEntryFrame from "./ListEntryFrame.svelte";
 
-    let {
-        representative,
-        bundleListItem,
-        checked = false,
-        showCheckbox = false,
-        actions = [],
-        onBundleDrop,
-        onCheckedChange,
-        onRunAction,
-        parentListSnippet
-    }: {
+    let props: {
         representative: ParsedMessage,
         bundleListItem: BundleListItem,
-        checked?: boolean,
-        showCheckbox?: boolean,
-        actions?: MessageAction[],
+        checked: boolean,
+        showCheckbox: boolean,
+        actions: MessageAction[],
         onBundleDrop: (sourceMessageId: string, target: ParsedMessage) => void,
-        onCheckedChange?: (checked: boolean) => void,
+        onCheckedChange: (checked: boolean) => void,
         onRunAction: (action: MessageAction) => void,
         parentListSnippet: Snippet
     } = $props();
@@ -35,14 +25,14 @@
     let panelService: PanelService = getContext(Context.PANEL_SERVICE)
 
     const count = $derived(
-        representative.bundleSummary?.hasMore
+        props.representative.bundleSummary?.hasMore
             ? '25+'
-            : String(representative.bundleSummary?.count ?? 1)
+            : String(props.representative.bundleSummary?.count ?? 1)
     );
     const senders = $derived(
-        representative.bundleSummary?.senders.length
-            ? representative.bundleSummary.senders.map(formatSenderName).join(', ')
-            : formatSenderName(representative.sender)
+        props.representative.bundleSummary?.senders.length
+            ? props.representative.bundleSummary.senders.map(formatSenderName).join(', ')
+            : formatSenderName(props.representative.sender)
     );
 
     const handleDragOver = (event: DragEvent) => {
@@ -51,7 +41,7 @@
         }
 
         const sourceMessageId = event.dataTransfer?.getData('application/x-fettuccemail-message');
-        if (!sourceMessageId || sourceMessageId === representative.id) {
+        if (!sourceMessageId || sourceMessageId === props.representative.id) {
             return false;
         }
 
@@ -67,7 +57,7 @@
         }
 
         event.preventDefault();
-        onBundleDrop(sourceMessageId, representative);
+        props.onBundleDrop(sourceMessageId, props.representative);
         return true;
     };
 </script>
@@ -76,26 +66,26 @@
     <EmailList
             getMessages={(pageToken?: string) => listMessagePage({
                 pageToken,
-                labelIds: [bundleListItem.bundleLabelId!],
+                labelIds: [props.bundleListItem.bundleLabelId!],
                 includeSpamTrash: true,
                 includeBundleSummaries: false,
             })}
             groupByDate
             parseBundles={false}
-            bundleInfo={bundleListItem}
+            bundleInfo={props.bundleListItem}
             selfSnippet={bundleList}
     />
 {/snippet}
 
 <ListEntryFrame
-        showCheckbox={showCheckbox}
-        checked={checked}
-        onCheckedChange={onCheckedChange!}
-        unread={representative.unread}
-        actions={actions.slice(0, 3)}
-        runAction={onRunAction}
+        showCheckbox={props.showCheckbox}
+        checked={props.checked}
+        onCheckedChange={props.onCheckedChange}
+        unread={props.representative.unread}
+        actions={props.actions?.slice(0, 3)}
+        runAction={props.onRunAction}
         selected={panelService.contains(bundleList)}
-        onSelect={() => panelService.openAfter(parentListSnippet, bundleList)}
+        onSelect={() => panelService.openAfter(props.parentListSnippet, bundleList)}
         onDragStart={undefined}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
@@ -105,13 +95,13 @@
     {/snippet}
     {#snippet sender()}
         <span class="sender-name">
-            {representative.bundleTitle ?? 'Untitled bundle'} <span class="count">({count})</span>
+            {props.representative.bundleTitle ?? 'Untitled bundle'} <span class="count">({count})</span>
         </span>
     {/snippet}
     {#snippet content()}
         {senders}
     {/snippet}
     {#snippet date()}
-        <span class="date" title={representative.date}>{formatListDate(representative.date)}</span>
+        <span class="date" title={props.representative.date}>{formatListDate(props.representative.date)}</span>
     {/snippet}
 </ListEntryFrame>

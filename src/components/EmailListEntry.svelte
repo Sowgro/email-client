@@ -12,20 +12,12 @@
     import SenderAvatar from "./SenderAvatar.svelte";
     import ListEntryFrame from "./ListEntryFrame.svelte";
 
-    let {
-        message,
-        checked = false,
-        showCheckbox = false,
-        onCheckedChange,
-        onMessageChanged,
-        onBundleDrop,
-        parentListSnippet,
-    }: {
+    let props: {
         message: ParsedMessage,
-        checked?: boolean,
-        showCheckbox?: boolean,
-        onCheckedChange?: (checked: boolean) => void,
-        onMessageChanged?: (
+        checked: boolean,
+        showCheckbox: boolean,
+        onCheckedChange: (checked: boolean) => void,
+        onMessageChanged: (
             messageId: string,
             changes: Partial<ParsedMessage>,
             removeFromList?: boolean,
@@ -38,28 +30,28 @@
     let toastService: ToastService = getContext(Context.TOAST_SERVICE)
     let gmailOperations: GmailOperationService = getContext(Context.GMAIL_OPERATION_SERVICE)
 
-    const actions = $derived(getRelevantActions(message));
+    const actions = $derived(getRelevantActions(props.message));
 
     const handleDragStart = (event: DragEvent) => {
-        if (!message.id || !event.dataTransfer) {
+        if (!props.message.id || !event.dataTransfer) {
             event.preventDefault();
             return;
         }
 
         event.dataTransfer.effectAllowed = 'move';
-        event.dataTransfer.setData('application/x-fettuccemail-message', message.id);
+        event.dataTransfer.setData('application/x-fettuccemail-message', props.message.id);
     };
 
     const handleDragOver = (event: DragEvent) => {
         if (
-            !onBundleDrop
+            !props.onBundleDrop
             || !event.dataTransfer?.types.includes('application/x-fettuccemail-message')
         ) {
             return false;
         }
 
         const sourceMessageId = event.dataTransfer?.getData('application/x-fettuccemail-message');
-        if (!sourceMessageId || sourceMessageId === message.id) {
+        if (!sourceMessageId || sourceMessageId === props.message.id) {
             return false;
         }
 
@@ -72,27 +64,27 @@
 
     const handleDrop = (event: DragEvent) => {
         const sourceMessageId = event.dataTransfer?.getData('application/x-fettuccemail-message');
-        if (!sourceMessageId || sourceMessageId === message.id) {
+        if (!sourceMessageId || sourceMessageId === props.message.id) {
             return false;
         }
 
         event.preventDefault();
-        onBundleDrop?.(sourceMessageId, message);
+        props.onBundleDrop?.(sourceMessageId, props.message);
         return true;
     };
 
     const runAction = async (action: MessageAction) => {
-        if (!message.id) {
+        if (!props.message.id) {
             return;
         }
 
-        const executed = await gmailOperations.runMessageAction(action, message.id);
+        const executed = await gmailOperations.runMessageAction(action, props.message.id);
         if (!executed) {
             return;
         }
 
         const selectedReplacement =
-            onMessageChanged?.(message.id, action.changes ?? {}, action.removeFromList) ?? false;
+            props.onMessageChanged?.(props.message.id, action.changes ?? {}, action.removeFromList) ?? false;
 
         if (action.removeFromList && !selectedReplacement) {
             panelService.close(emailView)
@@ -110,34 +102,37 @@
 </script>
 
 {#snippet emailView()}
-    <EmailView {message} {onMessageChanged}/>
+    <EmailView
+            message={props.message}
+            onMessageChanged={props.onMessageChanged}
+    />
 {/snippet}
 
 <ListEntryFrame
-        showCheckbox={showCheckbox}
-        checked={checked}
-        onCheckedChange={onCheckedChange!}
-        unread={message.unread}
+        showCheckbox={props.showCheckbox}
+        checked={props.checked}
+        onCheckedChange={(props.onCheckedChange)!}
+        unread={props.message.unread}
         actions={actions.slice(0, 3)}
         runAction={runAction}
         selected={panelService.contains(emailView)}
-        onSelect={() => panelService.openAfter(parentListSnippet, emailView)}
+        onSelect={() => panelService.openAfter(props.parentListSnippet, emailView)}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
 >
     {#snippet avatar()}
-        <SenderAvatar sender={message.sender}/>
+        <SenderAvatar sender={props.message.sender}/>
     {/snippet}
     {#snippet sender()}
-        <span class="sender-name">{formatSenderName(message.sender)}</span>
+        <span class="sender-name">{formatSenderName(props.message.sender)}</span>
     {/snippet}
     {#snippet content()}
-        <span class="subject">{message.subject ?? "No subject"}</span>
-        <span class="preview"> — {message.preview}</span>
+        <span class="subject">{props.message.subject ?? "No subject"}</span>
+        <span class="preview"> — {props.message.preview}</span>
     {/snippet}
     {#snippet date()}
-        <span class="date" title={message.date}>{formatListDate(message.date)}</span>
+        <span class="date" title={props.message.date}>{formatListDate(props.message.date)}</span>
     {/snippet}
 </ListEntryFrame>
 
