@@ -10,13 +10,13 @@
     } from "../services/GmailService";
     import {
         createBundle,
-        listAllMessageIds,
+        listAllMessageIds, renameBundle,
     } from "../services/BundleService";
     import {PanelService} from "../services/PanelService.svelte";
     import {ToastService} from "../services/ToastService.svelte";
     import {GmailOperationService} from "../services/GmailOperationService.svelte";
     import {type MessageSection, sortDate, sortPinned} from "../MessageSorter";
-    import {buildListItems, type EmailListItem} from "../EmailListItem";
+    import {buildListItems, type BundleListItem, type EmailListItem} from "../EmailListItem";
     import {Selection} from "../Selection.svelte";
     import {
         getCommonActions,
@@ -29,14 +29,14 @@
         groupByDate = false,
         groupPins = false,
         parseBundles = true,
-        bundleTitle,
+        bundleInfo,
         selfSnippet
     }: {
         getMessages: (pageToken?: string) => Promise<MessagePage>,
         groupByDate?: boolean,
         groupPins?: boolean,
         parseBundles?: boolean,
-        bundleTitle?: string,
+        bundleInfo?: BundleListItem,
         selfSnippet?: Snippet
     } = $props()
 
@@ -198,7 +198,7 @@
 
         const title = target.bundleLabelId
             ? undefined
-            : 'New bundle'
+            : requestBundleTitle(target.subject?.trim() || 'New bundle');
         if (!target.bundleLabelId && !title) {
             return;
         }
@@ -261,22 +261,78 @@
     onMount(() => {
         void loadMessages();
     })
+
+    const requestBundleTitle = (initialTitle = ''): string | undefined => {
+        const title = window.prompt('Name this bundle', initialTitle)?.trim();
+        if (title === '') {
+            toastService.error({message: 'Bundle names cannot be empty'});
+            return undefined;
+        }
+        return title;
+    };
+
+    const handleBundleRename = async () => {
+        if (bundling || !bundleInfo) {
+            return;
+        }
+
+        const title = requestBundleTitle(bundleInfo.bundleTitle ?? 'Untitled bundle');
+        if (!title || title === bundleInfo.bundleTitle) {
+            return;
+        }
+
+        bundling = true;
+        try {
+            await gmailOperations.run(() => renameBundle(bundleInfo.bundleLabelId, title));
+            // messages = messages.map((listedMessage) =>
+            //     listedMessage.bundleLabelId === bundleLabelId
+            //         ? {...listedMessage, bundleTitle: title}
+            //         : listedMessage
+            // );
+            toastService.success({message: 'Bundle renamed'});
+        } catch (ex) {
+            toastService.error({
+                message: 'Failed to rename bundle',
+                error: formatError(ex),
+            });
+        } finally {
+            bundling = false;
+        }
+    };
+
 </script>
 
 <svelte:window onkeydown={handleWindowKeydown}/>
 
 <div class="panel email-list">
-    <div class="action-bar">
-        <div class="action-group">
-            {#if bundleTitle}
+    {#if bundleInfo}
+        <div class="action-bar">
+            <div class="action-group">
                 <button
                         class="icon-button"
                         tabindex="0"
                         onclick={() => panelService.removeLast()}
+                        title="Close panel"
                 >
                     <span class="icon">keyboard_arrow_right</span>
                 </button>
-            {/if}
+            </div>
+            <div class="action-group">
+                <button
+                        class="icon-button"
+                        onclick={handleBundleRename}
+                        title="Rename bundle"
+                >
+                    <span class="icon">edit</span>
+                </button>
+            </div>
+        </div>
+        <span class="list-title">
+            <span class="icon">inbox</span>{bundleInfo.bundleTitle ?? 'Untitled bundle'}
+        </span>
+    {/if}
+    <div class="action-bar">
+        <div class="action-group">
             <button
                 class="icon-button"
                 aria-label={allVisibleSelected ? 'Clear selection' : 'Select all'}
@@ -317,9 +373,6 @@
             </button>
         </div>
     </div>
-    {#if bundleTitle}
-        <span class="list-title"><span class="icon">inbox</span>{bundleTitle}</span>
-    {/if}
     {#if !messages.length && loading}
         <span>Loading messages...</span>
     {:else if messages.length === 0}

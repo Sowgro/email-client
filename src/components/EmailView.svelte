@@ -74,10 +74,6 @@
         return () => window.clearInterval(intervalId);
     });
 
-    function closePanel() {
-        ps.panels = ps.panels.slice(0, -1);
-    }
-
     const runAction = async (action: MessageAction) => {
         if (!message.id) {
             return;
@@ -92,7 +88,7 @@
             onMessageChanged?.(message.id, action.changes ?? {}, action.removeFromList) ?? false;
 
         if (action.removeFromList && !selectedReplacement) {
-            closePanel();
+            ps.removeLast();
         }
 
         toastService.success({
@@ -140,7 +136,8 @@
                 <button
                     class="icon-button"
                     tabindex="0"
-                    onclick={closePanel}
+                    onclick={() => ps.removeLast()}
+                    title="Close panel"
                 >
                     <span class="icon">keyboard_arrow_right</span>
                 </button>
