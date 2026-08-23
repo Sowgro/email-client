@@ -19,9 +19,9 @@
         runAction: (action: MessageAction) => void,
         selected: boolean
         onSelect: () => void,
-        onDragStart: (event: DragEvent) => void,
-        onDragOver: (event: DragEvent) => void,
-        onDrop: (event: DragEvent) => void,
+        onDragStart?: (event: DragEvent) => void,
+        onDragOver: (event: DragEvent) => boolean,
+        onDrop: (event: DragEvent) => boolean,
     } = $props()
 
     let dragOver: boolean = $state(false);
@@ -54,10 +54,11 @@
         class="email"
         role="button"
         tabindex="0"
+        draggable={!!props.onDragStart}
         onclick={handleClick}
         onkeydown={handleKeydown}
         ondragstart={props.onDragStart}
-        ondragover={e => {props.onDragOver(e); dragOver = true}}
+        ondragover={e => props.onDragOver(e) && (dragOver = true)}
         ondragleave={() => dragOver = false}
         ondrop={e => {props.onDrop(e); dragOver = false}}
 >

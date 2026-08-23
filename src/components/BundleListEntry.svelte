@@ -92,21 +92,28 @@
 
     const handleDragOver = (event: DragEvent) => {
         if (!event.dataTransfer?.types.includes('application/x-fettuccemail-message')) {
-            return;
+            return false;
+        }
+
+        const sourceMessageId = event.dataTransfer?.getData('application/x-fettuccemail-message');
+        if (!sourceMessageId || sourceMessageId === representative.id) {
+            return false;
         }
 
         event.preventDefault();
         event.dataTransfer.dropEffect = 'move';
+        return true;
     };
 
     const handleDrop = (event: DragEvent) => {
         const sourceMessageId = event.dataTransfer?.getData('application/x-fettuccemail-message');
         if (!sourceMessageId) {
-            return;
+            return false;
         }
 
         event.preventDefault();
         onBundleDrop(sourceMessageId, representative);
+        return true;
     };
 
     const renameAction: MessageAction = {
@@ -142,7 +149,7 @@
         runAction={onRunAction}
         selected={!!panelService.panels.find(i => i === bundleList)}
         onSelect={() => panelService.openNextTo(parentListSnippet, bundleList)}
-        onDragStart={() => {}}
+        onDragStart={undefined}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
 >

@@ -55,23 +55,30 @@
             !onBundleDrop
             || !event.dataTransfer?.types.includes('application/x-fettuccemail-message')
         ) {
-            return;
+            return false;
+        }
+
+        const sourceMessageId = event.dataTransfer?.getData('application/x-fettuccemail-message');
+        if (!sourceMessageId || sourceMessageId === message.id) {
+            return false;
         }
 
         event.preventDefault();
         if (event.dataTransfer) {
             event.dataTransfer.dropEffect = 'move';
         }
+        return true;
     };
 
     const handleDrop = (event: DragEvent) => {
         const sourceMessageId = event.dataTransfer?.getData('application/x-fettuccemail-message');
         if (!sourceMessageId || sourceMessageId === message.id) {
-            return;
+            return false;
         }
 
         event.preventDefault();
         onBundleDrop?.(sourceMessageId, message);
+        return true;
     };
 
     const runAction = async (action: MessageAction) => {
