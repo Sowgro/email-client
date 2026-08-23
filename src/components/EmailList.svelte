@@ -284,11 +284,11 @@
         bundling = true;
         try {
             await gmailOperations.run(() => renameBundle(bundleInfo.bundleLabelId, title));
-            // messages = messages.map((listedMessage) =>
-            //     listedMessage.bundleLabelId === bundleLabelId
-            //         ? {...listedMessage, bundleTitle: title}
-            //         : listedMessage
-            // );
+            messages = messages.map((listedMessage) =>
+                listedMessage.bundleLabelId === bundleInfo.bundleLabelId
+                    ? {...listedMessage, bundleTitle: title}
+                    : listedMessage
+            );
             toastService.success({message: 'Bundle renamed'});
         } catch (ex) {
             toastService.error({
