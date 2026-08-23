@@ -94,8 +94,8 @@
         unread={representative.unread}
         actions={actions.slice(0, 3)}
         runAction={onRunAction}
-        selected={!!panelService.panels.find(i => i === bundleList)}
-        onSelect={() => panelService.openNextTo(parentListSnippet, bundleList)}
+        selected={panelService.contains(bundleList)}
+        onSelect={() => panelService.openAfter(parentListSnippet, bundleList)}
         onDragStart={undefined}
         onDragOver={handleDragOver}
         onDrop={handleDrop}

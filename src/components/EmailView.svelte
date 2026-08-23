@@ -88,7 +88,7 @@
             onMessageChanged?.(message.id, action.changes ?? {}, action.removeFromList) ?? false;
 
         if (action.removeFromList && !selectedReplacement) {
-            ps.removeLast();
+            ps.closeLast();
         }
 
         toastService.success({
@@ -136,7 +136,7 @@
                 <button
                     class="icon-button"
                     tabindex="0"
-                    onclick={() => ps.removeLast()}
+                    onclick={() => ps.closeLast()}
                     title="Close panel"
                 >
                     <span class="icon">keyboard_arrow_right</span>

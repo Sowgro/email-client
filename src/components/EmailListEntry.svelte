@@ -95,7 +95,7 @@
             onMessageChanged?.(message.id, action.changes ?? {}, action.removeFromList) ?? false;
 
         if (action.removeFromList && !selectedReplacement) {
-            panelService.removePanel(emailView)
+            panelService.close(emailView)
         }
 
         toastService.success({
@@ -120,8 +120,8 @@
         unread={message.unread}
         actions={actions.slice(0, 3)}
         runAction={runAction}
-        selected={!!panelService.panels.find(i => i === emailView)}
-        onSelect={() => panelService.openNextTo(parentListSnippet, emailView)}
+        selected={panelService.contains(emailView)}
+        onSelect={() => panelService.openAfter(parentListSnippet, emailView)}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDrop={handleDrop}

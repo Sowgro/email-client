@@ -85,8 +85,8 @@
         const currentPanelIndex = currentPanelSlot ? panelSlots.indexOf(currentPanelSlot) : -1;
 
         if (
-            panelService.panels.length < 2
-            || currentPanelIndex !== panelService.panels.length - 2
+            panelService.getPanelCount() < 2
+            || currentPanelIndex !== panelService.getPanelCount() - 2
             || event.isComposing
             || isTextEntry(event.target)
             || emailListRoot?.closest('#panels')?.querySelector('[role="menu"]')
@@ -99,7 +99,7 @@
         if (event.key === 'Escape') {
             event.preventDefault();
             selectedMessage?.focus();
-            panelService.panels = panelService.panels.slice(0, -1);
+            panelService.closeLast()
             return;
         }
 
@@ -311,7 +311,7 @@
                 <button
                         class="icon-button"
                         tabindex="0"
-                        onclick={() => panelService.removeLast()}
+                        onclick={() => panelService.close(selfSnippet!)}
                         title="Close panel"
                 >
                     <span class="icon">keyboard_arrow_right</span>
@@ -401,7 +401,7 @@
                             onBundleDrop={handleBundleDrop}
                             onRunAction={(action) => runBulkAction(action, [item])}
                             actions={getCommonActions(item.actionMessages)}
-                            parentListSnippet={selfSnippet ?? panelService.panels[0]}
+                            parentListSnippet={selfSnippet ?? panelService.getInitialPanel()}
                         />
                     {:else}
                         <EmailListEntry
@@ -411,7 +411,7 @@
                             onCheckedChange={(checked) => selection.set([item], checked)}
                             onBundleDrop={parseBundles ? handleBundleDrop : undefined}
                             onMessageChanged={handleMessageChanged}
-                            parentListSnippet={selfSnippet ?? panelService.panels[0]}
+                            parentListSnippet={selfSnippet ?? panelService.getInitialPanel()}
                         />
                     {/if}
                 {/each}

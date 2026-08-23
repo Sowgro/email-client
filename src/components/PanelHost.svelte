@@ -35,20 +35,18 @@
         };
     }
 
-    let ps = new PanelService()
-    setContext(Context.PANEL_SERVICE, ps)
-
     let {
         children
     }: {
         children: Snippet
     } = $props()
 
-    ps.panels = [children];
+    let ps = new PanelService(children)
+    setContext(Context.PANEL_SERVICE, ps)
 </script>
 
 <div class="scroll" id="panels">
-    {#each ps.panels as panel, index (index)}
+    {#each ps.getPanels() as panel, index (index)}
         <div
             class="panel-slot"
             transition:slidePanel={{enabled: index > 0}}
