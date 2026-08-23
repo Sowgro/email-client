@@ -51,3 +51,27 @@
         {/if}
     </div>
 </div>
+
+<style>
+    #not-header {
+        display: flex;
+        height: 100%;
+    }
+
+    #main {
+        display: flex;
+        width: 100%;
+        justify-content: center;
+        min-width: 0;
+    }
+
+    @media (max-width: 500px) {
+        #not-header {
+            flex-direction: column-reverse;
+        }
+
+        #main {
+            height: 100%;
+        }
+    }
+</style>

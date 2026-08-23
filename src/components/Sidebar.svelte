@@ -86,7 +86,6 @@
         min-width: 150px;
         gap: 3px;
         justify-content: space-between;
-        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
     }
 
     #sidebar .selected {
@@ -117,5 +116,25 @@
 
     button {
         margin-bottom: 12px;
+    }
+
+    @media (max-width: 500px) {
+        #sidebar {
+            flex-direction: row;
+            min-height: 30px;
+            max-width: none;
+
+            & > * {
+                display: flex;
+                flex-direction: row;
+                gap: 15px
+            }
+        }
+
+        button {
+            margin-bottom: 0;
+            margin-top: 0;
+            aspect-ratio: 1/1;
+        }
     }
 </style>

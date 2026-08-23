@@ -33,11 +33,6 @@ a {
   user-select: none;
 }
 
-#not-header {
-  display: flex;
-  height: 100%;
-}
-
 button {
   margin : 3px;
   font-size: inherit;
@@ -58,29 +53,7 @@ button {
   text-align: center;
 }
 
-input[type=text] {
-  background-color: transparent;
-  border-style: solid;
-  border-radius: 5px;
-  border-color: rgba(255, 255, 255, 0.31);
-  border-width: 1px;
-  color: white;
-  width: 100%;
-  font-family: inherit;
-  text-align: center;
-  padding: 2px;
-  font-size: inherit;
-  flex-grow: 3;
-}
-
 /* Panels */
-#main {
-  display: flex;
-  width: 100%;
-  justify-content: center;
-  min-width: 0;
-}
-
 .scroll {
   display:flex;
   /*flex-direction: column;*/

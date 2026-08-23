@@ -134,4 +134,36 @@
             opacity: 1;
         }
     }
+
+    input[type=text] {
+        background-color: transparent;
+        border-style: solid;
+        border-radius: 5px;
+        border-color: rgba(255, 255, 255, 0.31);
+        border-width: 1px;
+        color: white;
+        width: 100%;
+        font-family: inherit;
+        text-align: center;
+        padding: 2px;
+        font-size: inherit;
+        flex-grow: 3;
+    }
+
+    @media (max-width: 500px) {
+        #header {
+            flex-wrap: wrap;
+        }
+
+        #header .middle {
+            order: 1;
+            width: 100%;
+            min-width: 0;
+            margin-top: 5px;
+        }
+
+        input[type='text'] {
+            margin: 0 -5px;
+        }
+    }
 </style>
