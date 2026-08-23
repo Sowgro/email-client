@@ -231,32 +231,36 @@
 
 </script>
 
+{#snippet bundleHeader()}
+    <div class="action-bar">
+        <div class="action-group">
+            <button
+                    class="icon-button"
+                    tabindex="0"
+                    onclick={() => panelService.close(selfSnippet!)}
+                    title="Close panel"
+            >
+                <span class="icon">keyboard_arrow_right</span>
+            </button>
+        </div>
+        <div class="action-group">
+            <button
+                    class="icon-button"
+                    onclick={handleBundleRename}
+                    title="Rename bundle"
+            >
+                <span class="icon">edit</span>
+            </button>
+        </div>
+    </div>
+    <span class="list-title">
+        <span class="icon">inbox</span>{bundleInfo!.bundleTitle ?? 'Untitled bundle'}
+    </span>
+{/snippet}
+
 <div class="panel email-list">
     {#if bundleInfo}
-        <div class="action-bar">
-            <div class="action-group">
-                <button
-                        class="icon-button"
-                        tabindex="0"
-                        onclick={() => panelService.close(selfSnippet!)}
-                        title="Close panel"
-                >
-                    <span class="icon">keyboard_arrow_right</span>
-                </button>
-            </div>
-            <div class="action-group">
-                <button
-                        class="icon-button"
-                        onclick={handleBundleRename}
-                        title="Rename bundle"
-                >
-                    <span class="icon">edit</span>
-                </button>
-            </div>
-        </div>
-        <span class="list-title">
-            <span class="icon">inbox</span>{bundleInfo.bundleTitle ?? 'Untitled bundle'}
-        </span>
+        {@render bundleHeader()}
     {/if}
     <div class="action-bar">
         <div class="action-group">
