@@ -105,9 +105,3 @@
         <span class="date" title={props.representative.date}>{formatListDate(props.representative.date)}</span>
     {/snippet}
 </ListEntryFrame>
-
-<style>
-    .count {
-        color: rgba(239, 239, 239, 0.7);
-    }
-</style>

@@ -221,20 +221,12 @@
             </div>
         </div>
 
-        <div class="subject-row">
-            <h1>{message.subject ?? 'No subject'}</h1>
+        <span class="list-title">
+            {message.subject ?? 'No subject'}
             {#if threadMessages.length > 1}
-                <span class="thread-count" aria-label={`${threadMessages.length} messages`}>
-                    {threadMessages.length}
-                </span>
+                <span class="count">({threadMessages.length})</span>
             {/if}
-        </div>
-
-        {#if loadingThread}
-            <div class="thread-loading" role="status">
-                Loading conversation…
-            </div>
-        {/if}
+        </span>
 
         <div class="conversation" aria-label="Conversation">
             {#each threadMessages as threadMessage, index (getMessageKey(threadMessage, index))}
@@ -248,48 +240,25 @@
             {/each}
         </div>
     </div>
+
+    {#if loadingThread}
+        <div class="thread-loading" role="status">
+            Loading conversation…
+        </div>
+    {/if}
 </div>
 
 <style>
     .email-view {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 5px;
         min-height: 100%;
     }
 
     .action-bar .right {
         align-items: center;
         flex-direction: row-reverse;
-    }
-
-    .subject-row {
-        align-items: center;
-        display: flex;
-        gap: 8px;
-        margin-bottom: 2px;
-    }
-
-    h1 {
-        font-size: 1.2rem;
-        font-weight: 500;
-        line-height: 1.3;
-        margin: 0;
-        overflow-wrap: anywhere;
-    }
-
-    .thread-count {
-        align-items: center;
-        background: rgba(255, 255, 255, 0.12);
-        border-radius: 999px;
-        color: rgba(255, 255, 255, 0.72);
-        display: inline-flex;
-        flex: 0 0 auto;
-        font-size: 0.78rem;
-        height: 22px;
-        justify-content: center;
-        min-width: 22px;
-        padding-inline: 3px;
     }
 
     .thread-loading {
@@ -307,9 +276,11 @@
         padding-bottom: 10px;
     }
 
-    @keyframes spin {
-        to {
-            transform: rotate(360deg);
-        }
+    .list-title {
+        font-size: larger;
+        align-items: center;
+        display: flex;
+        margin-bottom: 5px;
+        gap: 5px;
     }
 </style>

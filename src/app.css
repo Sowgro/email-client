@@ -159,3 +159,7 @@ iframe.content {
     color: #e083ff;
   }
 }
+
+.count {
+  color: rgba(239, 239, 239, 0.7);
+}

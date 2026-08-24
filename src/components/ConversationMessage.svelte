@@ -168,7 +168,7 @@
                 <span class="sender-address">{message.sender ?? 'Unknown sender'}</span>
             {/if}
         </span>
-        <span class="icon expand-icon">{expanded ? 'expand_less' : 'expand_more'}</span>
+<!--        <span class="icon expand-icon">{expanded ? 'expand_less' : 'expand_more'}</span>-->
     </button>
 
     {#if expanded}
@@ -209,19 +209,16 @@
 
 <style>
     .conversation-message {
-        background: rgba(255, 255, 255, 0.025);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 5px;
         overflow: hidden;
     }
 
     .conversation-message.expanded {
-        background: rgba(255, 255, 255, 0.045);
+        /*background-color: rgba(224, 131, 255, 0.1);*/
     }
 
-    .conversation-message.unread:not(.expanded) {
-        border-left: 3px solid #e083ff;
-    }
+    /*.conversation-message.unread:not(.expanded) {*/
+    /*    border-left: 3px solid #e083ff;*/
+    /*}*/
 
     .message-header {
         align-items: center;
@@ -232,13 +229,14 @@
         gap: 10px;
         justify-content: flex-start;
         margin: 0;
-        padding: 12px;
+        padding: 8px;
         text-align: left;
         width: 100%;
+        font-weight: 400;
     }
 
     .message-header:hover {
-        background: rgba(255, 255, 255, 0.045);
+        background-color: rgba(0, 0, 0, 0.1);
     }
 
     .header-copy {

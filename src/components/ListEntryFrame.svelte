@@ -165,6 +165,10 @@
         }
     }
 
+    .email.selected .action-group {
+        background-color: #2e2a30;
+    }
+
     .email:hover .action-group {
         display: flex;
     }

@@ -161,8 +161,4 @@
     .preview {
         color: rgba(239, 239, 239, 0.5);
     }
-
-    .count {
-        color: rgba(239, 239, 239, 0.7);
-    }
 </style>
