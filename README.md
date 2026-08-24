@@ -29,13 +29,13 @@ An incomplete web email client currently using Google's gmail API
 - [x] Read/unread
 - [ ] Auto-bundle categories
 - [ ] important labels and custom Gmail label management.
-- [ ] Fix sender display
-- [ ] Fix date display
-- [ ] Sender icons
-- [ ] Keyboard nav & shortcuts.
+- [/] Fix sender display
+- [x] Fix date display
+- [/] Sender icons
+- [/] Keyboard nav & shortcuts.
 - [ ] snooze
 - [ ] Conversation/thread view instead of isolated message views.
-- [ ] Mobile layout
+- [/] Mobile layout
 - [ ] Search page with advanced search options.
 - [ ] Multiple account support.
 - [ ] Notifications for new mail.

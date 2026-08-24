@@ -71,22 +71,23 @@
     const toastService: ToastService = getContext(Context.TOAST_SERVICE)
     const gmailOperations: GmailOperationService = getContext(Context.GMAIL_OPERATION_SERVICE)
 
-    const handleMessageChanged = (
-        messageId: string,
+    const handleMessagesChanged = (
+        messageIds: string[],
         changes: Partial<ParsedMessage>,
         removeFromList = false,
         previewOpen = false,
     ): boolean => {
+        const changedIds = new Set(messageIds);
         if (!removeFromList) {
             messages = messages.map((message) =>
-                message.id === messageId ? {...message, ...changes} : message
+                message.id && changedIds.has(message.id) ? {...message, ...changes} : message
             );
             return false;
         }
 
         const hasNextMessage = previewOpen && activateNextMessage(emailListRoot);
 
-        messages = messages.filter(({id}) => id !== messageId);
+        messages = messages.filter(({id}) => !id || !changedIds.has(id));
         return hasNextMessage;
     }
 
@@ -163,7 +164,7 @@
         const targetGroups = await Promise.all(items.map((item) =>
             item.kind === 'bundle'
                 ? listAllMessageIds(item.bundleLabelId)
-                : Promise.resolve(item.representative.id ? [item.representative.id] : [])
+                : Promise.resolve(item.actionMessages.flatMap(({id}) => id ? [id] : []))
         ));
         return [...new Set(targetGroups.flat())];
     };
@@ -342,11 +343,12 @@
                     {:else}
                         <EmailListEntry
                             message={message}
+                            threadMessages={item.actionMessages}
                             checked={selection.has(item)}
                             showCheckbox={selection.active}
                             onCheckedChange={(checked) => selection.set([item], checked)}
                             onBundleDrop={parseBundles ? handleBundleDrop : undefined}
-                            onMessageChanged={handleMessageChanged}
+                            onMessagesChanged={handleMessagesChanged}
                             parentListSnippet={selfSnippet ?? panelService.getInitialPanel()}
                         />
                     {/if}

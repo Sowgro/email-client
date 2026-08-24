@@ -11,6 +11,8 @@ export type {BundleLabel, BundleSummary} from "./BundleService";
 
 export interface ParsedMessage {
     id?: string;
+    threadId?: string;
+    internalDate?: string;
     sender?: string;
     subject?: string;
     date?: string;
@@ -101,6 +103,30 @@ export async function listMessagePage(options: MessageListOptions = {}): Promise
     }
 }
 
+export async function getThreadMessages(message: ParsedMessage): Promise<ParsedMessage[]> {
+    if (!message.threadId) {
+        return [message];
+    }
+
+    try {
+        const [threadResponse, bundleLabels] = await Promise.all([
+            gapi.client.gmail.users.threads.get({
+                userId: 'me',
+                id: message.threadId,
+                format: 'full',
+            }),
+            listBundleLabels(),
+        ]);
+
+        const messages = (threadResponse.result.messages ?? [])
+            .map((threadMessage) => parseMessage(threadMessage, bundleLabels));
+
+        return messages.length ? messages : [message];
+    } catch (error) {
+        throw new GmailApiError(error);
+    }
+}
+
 export async function batchModifyMessageLabels(
     messageIds: string[],
     addLabelIds: string[] = [],
@@ -143,6 +169,8 @@ export function parseMessage(
 
     return {
         id: message.id,
+        threadId: message.threadId,
+        internalDate: message.internalDate,
         sender: getHeader(message, 'From'),
         subject: getHeader(message, 'Subject'),
         date: getHeader(message, 'Date'),

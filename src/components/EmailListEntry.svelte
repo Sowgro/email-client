@@ -14,11 +14,12 @@
 
     let props: {
         message: ParsedMessage,
+        threadMessages: ParsedMessage[],
         checked: boolean,
         showCheckbox: boolean,
         onCheckedChange: (checked: boolean) => void,
-        onMessageChanged: (
-            messageId: string,
+        onMessagesChanged: (
+            messageIds: string[],
             changes: Partial<ParsedMessage>,
             removeFromList?: boolean,
             previewOpen?: boolean,
@@ -32,6 +33,7 @@
     let gmailOperations: GmailOperationService = getContext(Context.GMAIL_OPERATION_SERVICE)
 
     const actions = $derived(getRelevantActions(props.message));
+    const unread = $derived(props.threadMessages.some((threadMessage) => threadMessage.unread));
 
     const handleDragStart = (event: DragEvent) => {
         if (!props.message.id || !event.dataTransfer) {
@@ -75,18 +77,19 @@
     };
 
     const runAction = async (action: MessageAction) => {
-        if (!props.message.id) {
+        const messageIds = props.threadMessages.flatMap(({id}) => id ? [id] : []);
+        if (!messageIds.length) {
             return;
         }
 
-        const executed = await gmailOperations.runMessageAction(action, props.message.id);
+        const executed = await gmailOperations.runBulkMessageAction(action, messageIds);
         if (!executed) {
             return;
         }
 
         const previewOpen = panelService.contains(emailView);
-        const selectedReplacement = props.onMessageChanged?.(
-            props.message.id,
+        const selectedReplacement = props.onMessagesChanged?.(
+            messageIds,
             action.changes ?? {},
             action.removeFromList,
             previewOpen,
@@ -97,7 +100,9 @@
         }
 
         toastService.success({
-            message: `Success: ${action.label}`,
+            message: messageIds.length === 1
+                ? `Success: ${action.label}`
+                : `${action.label}: ${messageIds.length} messages`,
             action: {
                 label: "Undo",
                 fn: () => {/* TODO */}
@@ -110,8 +115,8 @@
 {#snippet emailView()}
     <EmailView
             message={props.message}
-            onMessageChanged={(messageId, changes, removeFromList) => props.onMessageChanged(
-                messageId,
+            onMessageChanged={(messageId, changes, removeFromList) => props.onMessagesChanged(
+                [messageId],
                 changes,
                 removeFromList,
                 panelService.contains(emailView),
@@ -123,7 +128,7 @@
         showCheckbox={props.showCheckbox}
         checked={props.checked}
         onCheckedChange={(props.onCheckedChange)!}
-        unread={props.message.unread}
+        {unread}
         actions={actions.slice(0, 3)}
         runAction={runAction}
         selected={panelService.contains(emailView)}
@@ -136,7 +141,12 @@
         <SenderAvatar sender={props.message.sender}/>
     {/snippet}
     {#snippet sender()}
-        <span class="sender-name">{formatSenderName(props.message.sender)}</span>
+        <span class="sender-name">
+            {formatSenderName(props.message.sender)}
+            {#if props.threadMessages.length > 1}
+                <span class="count">({props.threadMessages.length})</span>
+            {/if}
+        </span>
     {/snippet}
     {#snippet content()}
         <span class="subject">{props.message.subject ?? "No subject"}</span>
@@ -150,5 +160,9 @@
 <style>
     .preview {
         color: rgba(239, 239, 239, 0.5);
+    }
+
+    .count {
+        color: rgba(239, 239, 239, 0.7);
     }
 </style>

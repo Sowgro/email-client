@@ -4,7 +4,7 @@ interface MessageListItem {
     kind: 'message';
     key: string;
     representative: ParsedMessage;
-    actionMessages: ActionableMessage[];
+    actionMessages: ParsedMessage[];
 }
 
 export interface BundleListItem {
@@ -23,16 +23,29 @@ export function buildListItems(
     parseBundles = true,
 ): EmailListItem[] {
     const seenBundleIds = new Set<string>();
+    const threadItems = new Map<string, MessageListItem>();
     const items: EmailListItem[] = [];
 
     for (const message of messages) {
         if (!parseBundles || !message.bundleLabelId) {
-            items.push({
+            const key = message.threadId
+                ? `thread:${message.threadId}`
+                : `message:${message.id ?? items.length}`;
+            const existingThread = threadItems.get(key);
+
+            if (existingThread) {
+                existingThread.actionMessages.push(message);
+                continue;
+            }
+
+            const threadItem: MessageListItem = {
                 kind: 'message',
-                key: `message:${message.id}`,
+                key,
                 representative: message,
                 actionMessages: [message],
-            });
+            };
+            threadItems.set(key, threadItem);
+            items.push(threadItem);
             continue;
         }
 
