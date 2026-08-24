@@ -17,7 +17,8 @@
     "svelte": "^5.28.1",
     "svelte-check": "^4.1.6",
     "typescript": "~5.8.3",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vite-plugin-singlefile": "^2.3.3"
   },
   "dependencies": {
     "dompurify": "^3.4.14"
