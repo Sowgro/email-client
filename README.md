@@ -34,7 +34,7 @@ An incomplete web email client currently using Google's gmail API
 - [/] Sender icons
 - [/] Keyboard nav & shortcuts.
 - [ ] snooze
-- [ ] Conversation/thread view instead of isolated message views.
+- [x] Conversation/thread view instead of isolated message views.
 - [/] Mobile layout
 - [ ] Search page with advanced search options.
 - [ ] Multiple account support.

@@ -139,23 +139,17 @@ function getRelevantActions(message: ActionableMessage): MessageAction[] {
 }
 
 function getCommonActions(messages: ActionableMessage[]): MessageAction[] {
-    if (!messages.length) {
-        return [];
+    const actionsByLabel = new Map<string, MessageAction>();
+    for (const message of messages) {
+        for (const action of getRelevantActions(message)) {
+            actionsByLabel.set(action.label, action);
+        }
     }
-
-    const remainingActionLabels = messages.slice(1).map((message) =>
-        new Set(getRelevantActions(message).map((action) => action.label))
-    );
-    return getRelevantActions(messages[0]).filter((action) =>
-        remainingActionLabels.every((labels) => labels.has(action.label))
-    );
+    return [...actionsByLabel.values()];
 }
-
-let messageActions = { permanentlyDelete }
 
 export {
     type MessageAction,
     getCommonActions,
     getRelevantActions,
-    messageActions,
 };
