@@ -1,6 +1,6 @@
 <script lang="ts">
     import {getContext} from "svelte";
-    import type {Action} from "svelte/action";
+    import createDOMPurify from "dompurify";
     import {Context} from "../Context";
     import {formatEmailViewDate} from "../DateFormatter";
     import {formatSenderName} from "../SenderFormatter";
@@ -31,6 +31,7 @@
 
     let downloadingAttachmentId: string | undefined = $state();
     let formattedDate = $derived(formatEmailViewDate(message.date, currentTime));
+    let sanitizedHtml = $derived(message.html ? sanitizeEmailHtml(message.html) : '');
 
     const handleAttachmentDownload = async (attachment: ParsedAttachment) => {
         downloadingAttachmentId = attachment.id;
@@ -59,95 +60,47 @@
         return `${(size / 1024 / 1024).toFixed(1)} MB`;
     };
 
-    const autoSizeFrame: Action<HTMLIFrameElement> = (frame) => {
-        let documentObserver: ResizeObserver | undefined;
-        let frameObserver: ResizeObserver | undefined;
-        let animationFrameId: number | undefined;
-        let shrinkOnNextMeasure = false;
-        let lastWidth = frame.clientWidth;
-
-        const measure = (allowShrink = false) => {
-            shrinkOnNextMeasure ||= allowShrink;
-            if (animationFrameId !== undefined) {
-                return;
+    function sanitizeEmailHtml(html: string): string {
+        const sanitizer = createDOMPurify(window);
+        sanitizer.addHook('afterSanitizeAttributes', (node) => {
+            if (node.nodeName === 'A' && node.hasAttribute('href')) {
+                node.setAttribute('target', '_blank');
+                node.setAttribute('rel', 'noopener noreferrer');
             }
 
-            animationFrameId = window.requestAnimationFrame(() => {
-                animationFrameId = undefined;
-
-                try {
-                    const document = frame.contentDocument;
-                    if (!document?.body || !document.documentElement) {
-                        return;
-                    }
-
-                    document.body.style.overflow = 'hidden';
-                    document.documentElement.style.overflow = 'hidden';
-
-                    if (shrinkOnNextMeasure) {
-                        frame.style.height = '1px';
-                        shrinkOnNextMeasure = false;
-                    }
-
-                    const height = Math.max(
-                        document.body.scrollHeight,
-                        document.body.offsetHeight,
-                        document.documentElement.scrollHeight,
-                        document.documentElement.offsetHeight,
-                    );
-                    const targetHeight = Math.max(height, 80);
-
-                    if (Math.abs(frame.getBoundingClientRect().height - targetHeight) > 1) {
-                        frame.style.height = `${targetHeight}px`;
-                    }
-                } catch {
-                    // Keep the minimum height if a browser denies access to the sandboxed document.
-                }
-            });
-        };
-
-        const observeDocument = () => {
-            documentObserver?.disconnect();
-            measure(true);
-
-            try {
-                const document = frame.contentDocument;
-                if (!document?.body || !document.documentElement) {
-                    return;
-                }
-
-                documentObserver = new ResizeObserver(() => measure());
-                documentObserver.observe(document.documentElement);
-                documentObserver.observe(document.body);
-            } catch {
-                // The initial measurement provides the best available fallback.
-            }
-        };
-
-        frame.addEventListener('load', observeDocument);
-        frameObserver = new ResizeObserver(([entry]) => {
-            const width = entry.contentRect.width;
-            if (Math.abs(width - lastWidth) > 1) {
-                lastWidth = width;
-                measure(true);
+            if (node.nodeName === 'IMG') {
+                node.setAttribute('loading', 'lazy');
+                node.setAttribute('referrerpolicy', 'no-referrer');
             }
         });
-        frameObserver.observe(frame);
-        if (frame.contentDocument?.readyState === 'complete') {
-            observeDocument();
-        }
 
-        return {
-            destroy() {
-                frame.removeEventListener('load', observeDocument);
-                documentObserver?.disconnect();
-                frameObserver?.disconnect();
-                if (animationFrameId !== undefined) {
-                    window.cancelAnimationFrame(animationFrameId);
-                }
-            },
-        };
-    };
+        return sanitizer.sanitize(html, {
+            USE_PROFILES: {html: true},
+            SANITIZE_NAMED_PROPS: true,
+            ALLOW_DATA_ATTR: false,
+            FORBID_TAGS: [
+                'base',
+                'button',
+                'audio',
+                'embed',
+                'form',
+                'iframe',
+                'input',
+                'link',
+                'meta',
+                'object',
+                'option',
+                'script',
+                'select',
+                'source',
+                'style',
+                'textarea',
+                'track',
+                'video',
+            ],
+            FORBID_ATTR: ['action', 'autofocus', 'formaction', 'srcset'],
+        });
+    }
 </script>
 
 <article class:expanded class:unread={message.unread} class="conversation-message">
@@ -190,14 +143,7 @@
             {/if}
 
             {#if message.html}
-                <iframe
-                    title={`Message from ${formatSenderName(message.sender)}`}
-                    class="message-body html-body"
-                    sandbox="allow-same-origin"
-                    scrolling="no"
-                    srcdoc={message.html}
-                    use:autoSizeFrame
-                ></iframe>
+                <div class="message-body html-body">{@html sanitizedHtml}</div>
             {:else if message.text}
                 <div class="message-body plain-text">{message.text}</div>
             {:else}
@@ -210,10 +156,6 @@
 <style>
     .conversation-message {
         overflow: hidden;
-    }
-
-    .conversation-message.expanded {
-        /*background-color: rgba(224, 131, 255, 0.1);*/
     }
 
     /*.conversation-message.unread:not(.expanded) {*/
@@ -279,11 +221,6 @@
         white-space: nowrap;
     }
 
-    .expand-icon {
-        color: rgba(255, 255, 255, 0.6);
-        flex: 0 0 auto;
-    }
-
     .message-details {
         border-top: 1px solid rgba(255, 255, 255, 0.08);
     }
@@ -295,11 +232,28 @@
     }
 
     .html-body {
-        background: white;
-        border: 0;
-        height: 80px;
-        min-height: 80px;
-        overflow: hidden;
+        contain: content;
+        isolation: isolate;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+    }
+
+    .html-body :global(img) {
+        height: auto;
+        max-width: 100%;
+    }
+
+    .html-body :global(pre) {
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+    }
+
+    .html-body :global(p:first-child) {
+        margin-top: 0;
+    }
+
+    .html-body :global(p:last-child) {
+        margin-bottom: 0;
     }
 
     .plain-text {
