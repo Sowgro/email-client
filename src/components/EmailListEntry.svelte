@@ -11,6 +11,7 @@
     import {formatSenderName} from "../SenderFormatter";
     import SenderAvatar from "./SenderAvatar.svelte";
     import ListEntryFrame from "./ListEntryFrame.svelte";
+    import {formatConversationSubject} from "../SubjectFormatter";
 
     let props: {
         message: ParsedMessage,
@@ -34,6 +35,7 @@
 
     const actions = $derived(getRelevantActions(props.message));
     const unread = $derived(props.threadMessages.some((threadMessage) => threadMessage.unread));
+    const subject = $derived(formatConversationSubject(props.threadMessages, props.message.subject));
 
     const handleDragStart = (event: DragEvent) => {
         if (!props.message.id || !event.dataTransfer) {
@@ -149,7 +151,7 @@
         </span>
     {/snippet}
     {#snippet content()}
-        <span class="subject">{props.message.subject ?? "No subject"}</span>
+        <span class="subject">{subject}</span>
         <span class="preview"> — {props.message.preview}</span>
     {/snippet}
     {#snippet date()}

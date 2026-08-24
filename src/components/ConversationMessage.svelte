@@ -31,7 +31,8 @@
 
     let downloadingAttachmentId: string | undefined = $state();
     let formattedDate = $derived(formatEmailViewDate(message.date, currentTime));
-    let sanitizedHtml = $derived(message.html ? sanitizeEmailHtml(message.html) : '');
+    let sanitizedHtml = $derived(message.html ? sanitizeEmailHtml(stripHtmlReplyFooter(message.html)) : '');
+    let displayText = $derived(message.text ? stripTextReplyFooter(message.text) : '');
 
     const handleAttachmentDownload = async (attachment: ParsedAttachment) => {
         downloadingAttachmentId = attachment.id;
@@ -101,6 +102,67 @@
             FORBID_ATTR: ['action', 'autofocus', 'formaction', 'srcset'],
         });
     }
+
+    function stripHtmlReplyFooter(html: string): string {
+        const document = new DOMParser().parseFromString(html, 'text/html');
+
+        document.querySelectorAll('.gmail_quote, .yahoo_quoted').forEach((quotedReply) => {
+            quotedReply.remove();
+        });
+
+        const attributionElements = [...document.body.querySelectorAll('div, p, span')]
+            .filter((element) => isReplyAttribution(element.textContent));
+
+        for (const attribution of attributionElements) {
+            if (!attribution.isConnected) {
+                continue;
+            }
+
+            const quotedReply = attribution.nextElementSibling;
+            attribution.remove();
+            if (quotedReply?.matches('blockquote, [type="cite"]')) {
+                quotedReply.remove();
+            }
+        }
+
+        removeEmptyTrailingNodes(document.body);
+        return document.body.innerHTML;
+    }
+
+    function stripTextReplyFooter(text: string): string {
+        const lines = text.split(/\r?\n/);
+        const attributionIndex = lines.findIndex((_, index) =>
+            [1, 2, 3].some((lineCount) =>
+                isReplyAttribution(lines.slice(index, index + lineCount).join(' '))
+            )
+        );
+        return attributionIndex < 0
+            ? text
+            : lines.slice(0, attributionIndex).join('\n').trimEnd();
+    }
+
+    function isReplyAttribution(value: string | null | undefined): boolean {
+        const line = value
+            ?.replace(/^\s*>+\s*/, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        return Boolean(line && /^On .+ wrote:$/i.test(line));
+    }
+
+    function removeEmptyTrailingNodes(container: HTMLElement) {
+        while (container.lastChild) {
+            const lastChild = container.lastChild;
+            const isEmptyText = lastChild.nodeType === Node.TEXT_NODE && !lastChild.textContent?.trim();
+            const isEmptyElement = lastChild instanceof HTMLElement
+                && (lastChild.tagName === 'BR' || !lastChild.textContent?.trim());
+
+            if (!isEmptyText && !isEmptyElement) {
+                return;
+            }
+
+            lastChild.remove();
+        }
+    }
 </script>
 
 <article class:expanded class:unread={message.unread} class="conversation-message">
@@ -145,7 +207,7 @@
             {#if message.html}
                 <div class="message-body html-body">{@html sanitizedHtml}</div>
             {:else if message.text}
-                <div class="message-body plain-text">{message.text}</div>
+                <div class="message-body plain-text">{displayText}</div>
             {:else}
                 <span class="empty-body">No message body found.</span>
             {/if}
@@ -219,10 +281,6 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-    }
-
-    .message-details {
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
     }
 
     .message-body {

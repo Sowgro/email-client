@@ -13,6 +13,7 @@
     import {ToastService} from "../services/ToastService.svelte";
     import ContextMenu from "./ContextMenu.svelte";
     import ConversationMessage from "./ConversationMessage.svelte";
+    import {formatConversationSubject} from "../SubjectFormatter";
 
     let {
         message,
@@ -35,6 +36,7 @@
     let loadingThread = $state(Boolean(message.threadId));
     let expandedMessageKeys: string[] = $state([getMessageKey(message, 0)]);
     let actions: MessageAction[] = $derived(getRelevantActions(message));
+    let conversationSubject = $derived(formatConversationSubject(threadMessages, message.subject));
 
     const MARK_AS_READ_DELAY_MS = 3_000;
 
@@ -178,6 +180,7 @@
         const headerTimestamp = Date.parse(threadMessage.date ?? '');
         return Number.isNaN(headerTimestamp) ? 0 : headerTimestamp;
     }
+
 </script>
 
 <div class="panel">
@@ -222,7 +225,7 @@
         </div>
 
         <span class="list-title">
-            {message.subject ?? 'No subject'}
+            {conversationSubject}
             {#if threadMessages.length > 1}
                 <span class="count">({threadMessages.length})</span>
             {/if}
