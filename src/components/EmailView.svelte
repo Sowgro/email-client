@@ -203,7 +203,7 @@
                         class="icon-button"
                         aria-label={action.label}
                         title={action.label}
-                        disabled={!message.id || gmailOperations.messageActionBusy}
+                        disabled={!message.id || gmailOperations.messageActionBusy || loadingThread}
                         onclick={() => runAction(action)}
                     >
                         <span class="icon">{action.icon}</span>
@@ -213,7 +213,7 @@
                     {#each actions.slice(3) as action (action.label)}
                         <button
                             role="menuitem"
-                            disabled={!message.id || gmailOperations.messageActionBusy}
+                            disabled={!message.id || gmailOperations.messageActionBusy || loadingThread}
                             onclick={() => runAction(action)}
                         >
                             <span class="icon">{action.icon}</span>
@@ -223,32 +223,29 @@
                 </ContextMenu>
             </div>
         </div>
-
-        <span class="list-title">
+        {#if loadingThread}
+            <span class="loading-text">Loading conversation…</span>
+        {:else}
+                <span class="list-title">
             {conversationSubject}
-            {#if threadMessages.length > 1}
+                    {#if threadMessages.length > 1}
                 <span class="count">({threadMessages.length})</span>
             {/if}
         </span>
 
-        <div class="conversation" aria-label="Conversation">
-            {#each threadMessages as threadMessage, index (getMessageKey(threadMessage, index))}
-                {@const messageKey = getMessageKey(threadMessage, index)}
-                <ConversationMessage
-                    message={threadMessage}
-                    {currentTime}
-                    expanded={expandedMessageKeys.includes(messageKey)}
-                    onToggle={() => toggleMessage(threadMessage, index)}
-                />
-            {/each}
-        </div>
+            <div class="conversation" aria-label="Conversation">
+                {#each threadMessages as threadMessage, index (getMessageKey(threadMessage, index))}
+                    {@const messageKey = getMessageKey(threadMessage, index)}
+                    <ConversationMessage
+                            message={threadMessage}
+                            {currentTime}
+                            expanded={expandedMessageKeys.includes(messageKey)}
+                            onToggle={() => toggleMessage(threadMessage, index)}
+                    />
+                {/each}
+            </div>
+        {/if}
     </div>
-
-    {#if loadingThread}
-        <div class="thread-loading" role="status">
-            Loading conversation…
-        </div>
-    {/if}
 </div>
 
 <style>
@@ -264,12 +261,8 @@
         flex-direction: row-reverse;
     }
 
-    .thread-loading {
-        align-items: center;
-        color: rgba(255, 255, 255, 0.62);
-        display: flex;
-        font-size: 0.85rem;
-        gap: 6px;
+    .loading-text {
+        text-align: center;
     }
 
     .conversation {
