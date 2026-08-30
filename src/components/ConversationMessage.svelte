@@ -205,7 +205,9 @@
             {/if}
 
             {#if message.html}
-                <div class="message-body html-body">{@html sanitizedHtml}</div>
+                <div class="scroll-wrapper">
+                    <div class="message-body html-body">{@html sanitizedHtml}</div>
+                </div>
             {:else if message.text}
                 <div class="message-body plain-text">{displayText}</div>
             {:else}
@@ -286,7 +288,8 @@
     .message-body {
         box-sizing: border-box;
         display: block;
-        width: 100%;
+        width: fit-content;
+        min-width: 100%;
     }
 
     .html-body {
@@ -363,5 +366,10 @@
         .message-details {
             padding-inline: 8px;
         }
+    }
+
+    .scroll-wrapper {
+        width: 100%;
+        overflow-x: auto;
     }
 </style>
