@@ -37,7 +37,7 @@ An incomplete web email client currently using Google's gmail API
 - [x] Conversation/thread view instead of isolated message views.
 - [/] Mobile layout
 - [ ] Search page with advanced search options.
-- [ ] Multiple account support.
+- [x] Multiple account support.
 - [ ] Notifications for new mail.
 
 ### composition

@@ -12,6 +12,7 @@
     import Header from "../components/Header.svelte";
     import {Context} from "../Context";
     import Settings from "../tabs/Settings.svelte";
+    import {AuthService} from "../services/AuthService.svelte";
 
     interface Route {path: string, component: Component}
 
@@ -27,6 +28,7 @@
     ]
 
     const router: Router = getContext(Context.ROUTER)
+    const auth: AuthService = getContext(Context.AUTH_SERVICE)
 
     let activeRoute: Route | undefined = $state()
 
@@ -41,7 +43,7 @@
 </script>
 
 <Header/>
-<div id="not-header">
+<div id="not-header" inert={auth.busy}>
     <Sidebar/>
     <div id="main">
         {#if activeRoute}

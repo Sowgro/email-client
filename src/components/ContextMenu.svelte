@@ -69,7 +69,7 @@
         z-index: 2;
         top: 28px;
         right: 0;
-        min-width: 180px;
+        min-width: 220px;
         padding: 3px;
         background: #212121;
     }
@@ -80,6 +80,11 @@
         justify-content: flex-start;
         background: transparent;
         color: white;
+    }
+
+    .menu :global(.icon) {
+        font-size: larger;
+        padding: 2px;
     }
 
     .menu :global(button:hover) {

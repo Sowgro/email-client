@@ -40,7 +40,9 @@
 </script>
 
 {#if authService.authenticated}
-  <Main/>
+  {#key authService.profile?.emailAddress}
+    <Main/>
+  {/key}
 {:else}
   <Login/>
 {/if}

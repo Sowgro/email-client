@@ -5,12 +5,17 @@
     import {AuthService} from "../services/AuthService.svelte";
     import ContextMenu from "./ContextMenu.svelte";
     import {GmailOperationService} from "../services/GmailOperationService.svelte";
+    import {ToastService} from "../services/ToastService.svelte";
 
     let router: Router = getContext(Context.ROUTER)
     let auth: AuthService = getContext(Context.AUTH_SERVICE)
     let operationService: GmailOperationService = getContext(Context.GMAIL_OPERATION_SERVICE)
+    let toastService: ToastService = getContext(Context.TOAST_SERVICE)
 
     let searchQuery = $state('')
+
+    const isCurrentAccount = (emailAddress: string) =>
+        emailAddress.toLowerCase() === auth.profile?.emailAddress.toLowerCase()
 
     const currentDate = new Intl.DateTimeFormat(undefined, {
         weekday: 'long',
@@ -35,6 +40,26 @@
         }
         router.navigate(`/search?q=${encodeURIComponent(query)}`)
     }
+
+    const switchAccount = async (emailAddress: string) => {
+        const switched = await auth.switchAccount(emailAddress)
+        if (!switched && auth.error) {
+            toastService.error({
+                message: 'Could not switch accounts',
+                error: auth.error,
+            })
+        }
+    }
+
+    const addAccount = async () => {
+        const added = await auth.addAccount()
+        if (!added && auth.error) {
+            toastService.error({
+                message: 'Could not add account',
+                error: auth.error,
+            })
+        }
+    }
 </script>
 
 <div id="header">
@@ -51,14 +76,38 @@
     </div>
     <div class="right">
         <ContextMenu label="Account menu">
-            {#snippet trigger({toggle})}
-                <button class="icon-button dropdown" onclick={toggle} >
+            {#snippet trigger({open, toggle})}
+                <button
+                    class="icon-button dropdown"
+                    aria-label="Account menu"
+                    aria-haspopup="menu"
+                    aria-expanded={open}
+                    onclick={toggle}
+                >
                     <span class="icon sync-icon" class:active="{operationService.busy}">sync</span>
                     {auth.profile?.emailAddress ?? 'Google account'}
                     <span class="icon" aria-hidden="true">arrow_drop_down</span>
                 </button>
             {/snippet}
-            <button role="menuitem" onclick={() => auth.signOut()}>
+            {#each auth.accounts as account (account.emailAddress)}
+                <button
+                    role="menuitemradio"
+                    class="account-option"
+                    class:selected={isCurrentAccount(account.emailAddress)}
+                    aria-checked={isCurrentAccount(account.emailAddress)}
+                    disabled={auth.busy || operationService.busy}
+                    onclick={() => switchAccount(account.emailAddress)}
+                >
+                    <span class="icon" aria-hidden="true">account_circle</span>
+                    <span class="account-email">{account.emailAddress}</span>
+                </button>
+            {/each}
+            <span class="menu-separator" role="separator"></span>
+            <button role="menuitem" disabled={auth.busy || operationService.busy} onclick={addAccount}>
+                <span class="icon" aria-hidden="true">person_add</span>
+                Add account
+            </button>
+            <button role="menuitem" disabled={auth.busy} onclick={() => auth.signOut()}>
                 <span class="icon" aria-hidden="true">logout</span>
                 Log out
             </button>
@@ -115,6 +164,27 @@
         span {
             font-size: 20px;
         }
+    }
+
+    .account-option {
+        max-width: 300px;
+
+        &.selected {
+            color: #e083ff;
+        }
+    }
+
+    .account-email {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .menu-separator {
+        display: block;
+        height: 1px;
+        margin: 3px 6px;
+        background: rgba(255, 255, 255, 0.15);
     }
 
     @keyframes spin {
