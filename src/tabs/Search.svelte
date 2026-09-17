@@ -19,5 +19,7 @@
 </script>
 
 <PanelHost>
-    <EmailList {getMessages}/>
+    {#key query}
+        <EmailList {getMessages}/>
+    {/key}
 </PanelHost>
