@@ -87,7 +87,7 @@ export class AuthService {
 
         try {
             await this.initialize();
-            const token = await this.requestToken('consent');
+            const token = await this.requestToken('');
             const profile = await this.loadProfile();
             this.activateAccount(profile, token);
             return true;
@@ -454,11 +454,11 @@ export class AuthService {
         });
 
         if (!accounts.length) {
-            sessionStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(STORAGE_KEY);
             return;
         }
 
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
             activeEmailAddress: this.profile?.emailAddress,
             accounts,
         } satisfies StoredAccounts));
@@ -477,7 +477,7 @@ export class AuthService {
 }
 
 function readStoredAccounts(): StoredAccounts | undefined {
-    const value = sessionStorage.getItem(STORAGE_KEY);
+    const value = localStorage.getItem(STORAGE_KEY);
     if (!value) {
         return undefined;
     }
@@ -515,10 +515,10 @@ function readStoredAccounts(): StoredAccounts | undefined {
             };
         }
     } catch {
-        // Invalid session data is discarded below.
+        // Invalid saved account data is discarded below.
     }
 
-    sessionStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY);
     return undefined;
 }
 
