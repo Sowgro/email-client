@@ -59,6 +59,7 @@ export class AuthService {
     public profile: AccountProfile | undefined = $state();
     public accounts: AccountProfile[] = $state([]);
     public error: string | undefined = $state();
+    public refreshRequired = $state(false);
 
     private tokenClient: TokenClient | undefined;
     private readonly accountTokens = new Map<string, StoredToken>();
@@ -168,6 +169,38 @@ export class AuthService {
             return true;
         } catch (error) {
             this.restoreAccount(currentProfile, currentToken);
+            this.error = getErrorMessage(error);
+            return false;
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    public async refreshAccess(): Promise<boolean> {
+        if (this.busy || !this.refreshRequired || !this.profile) {
+            return false;
+        }
+
+        const emailAddress = this.profile.emailAddress;
+        this.busy = true;
+        this.error = undefined;
+
+        try {
+            // Keep this as the first asynchronous operation so Google's popup is
+            // opened directly from the user's click rather than from a timer.
+            const token = await this.requestToken('', emailAddress);
+            const profile = await this.loadProfile();
+            if (accountKey(profile.emailAddress) !== accountKey(emailAddress)) {
+                throw new Error('Google refreshed the wrong account.');
+            }
+
+            this.activateAccount(profile, token);
+            return true;
+        } catch (error) {
+            if (!this.activateNextAvailableAccount(emailAddress)) {
+                this.deactivateSession();
+                this.persistAccounts();
+            }
             this.error = getErrorMessage(error);
             return false;
         } finally {
@@ -381,25 +414,13 @@ export class AuthService {
         }
 
         const delay = Math.max(this.expiresAt - Date.now() - REFRESH_MARGIN_MS, 0);
-        this.refreshTimer = setTimeout(async () => {
+        this.refreshTimer = setTimeout(() => {
+            this.refreshTimer = undefined;
             if (accountKey(this.profile?.emailAddress ?? '') !== accountKey(activeEmailAddress)) {
                 return;
             }
 
-            try {
-                const token = await this.requestToken('', activeEmailAddress);
-                const profile = await this.loadProfile();
-                if (accountKey(profile.emailAddress) !== accountKey(activeEmailAddress)) {
-                    throw new Error('Google refreshed the wrong account.');
-                }
-                this.activateAccount(profile, token);
-            } catch {
-                if (!this.activateNextAvailableAccount(activeEmailAddress)) {
-                    this.deactivateSession();
-                    this.persistAccounts();
-                }
-                this.error = 'Your Google session expired. Please sign in again.';
-            }
+            this.refreshRequired = true;
         }, delay);
     }
 
@@ -418,6 +439,7 @@ export class AuthService {
         this.expiresAt = token.expiresAt;
         this.profile = profile;
         this.authenticated = true;
+        this.refreshRequired = false;
         this.persistAccounts();
         this.scheduleRefresh();
     }
@@ -473,6 +495,7 @@ export class AuthService {
         this.expiresAt = 0;
         this.profile = undefined;
         this.authenticated = false;
+        this.refreshRequired = false;
     }
 }
 
