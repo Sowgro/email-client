@@ -1,11 +1,9 @@
 <script lang="ts">
-    import {getContext, onMount} from "svelte";
+    import {getContext, onMount, untrack} from "svelte";
     import {Context} from "../Context";
     import {getRelevantActions, type MessageAction} from "../MessageActions";
     import {
         formatError,
-        getThreadMessages,
-        modifyMessageLabels,
         type ParsedMessage,
     } from "../services/GmailService";
     import type {GmailOperationService} from "../services/GmailOperationService.svelte";
@@ -14,27 +12,32 @@
     import ContextMenu from "./ContextMenu.svelte";
     import ConversationMessage from "./ConversationMessage.svelte";
     import {formatConversationSubject} from "../SubjectFormatter";
+    import type {MessageStore} from "../services/MessageStore.svelte";
 
     let {
-        message,
-        onMessageChanged,
+        message: initialMessage,
+        onOptimisticChange,
     }: {
         message: ParsedMessage,
-        onMessageChanged?: (
-            messageId: string,
-            changes: Partial<ParsedMessage>,
-            removeFromList?: boolean,
-        ) => boolean,
+        onOptimisticChange?: (messageIds: string[]) => void,
     } = $props();
 
     const ps: PanelService = getContext(Context.PANEL_SERVICE);
     const toastService: ToastService = getContext(Context.TOAST_SERVICE);
     const gmailOperations: GmailOperationService = getContext(Context.GMAIL_OPERATION_SERVICE);
+    const messageStore: MessageStore = getContext(Context.MESSAGE_STORE);
+    const selectedId = untrack(() => initialMessage.id);
+    let message = $derived((selectedId && messageStore.getMessage(selectedId)) || initialMessage);
+    let actionPending = $derived(gmailOperations.isPending(selectedId ? [selectedId] : []));
 
     let currentTime = $state(new Date());
-    let threadMessages: ParsedMessage[] = $state([message]);
-    let loadingThread = $state(Boolean(message.threadId));
-    let expandedMessageKeys: string[] = $state([getMessageKey(message, 0)]);
+    let threadIds: string[] = $state(selectedId ? [selectedId] : []);
+    let threadMessages = $derived(sortThreadMessages(threadIds.flatMap((id) => {
+        const current = messageStore.getMessage(id);
+        return current ? [current] : [];
+    })));
+    let loadingThread = $state(untrack(() => Boolean(initialMessage.threadId)));
+    let expandedMessageKeys: string[] = $state(untrack(() => [getMessageKey(initialMessage, 0)]));
     let actions: MessageAction[] = $derived(getRelevantActions(message));
     let conversationSubject = $derived(formatConversationSubject(threadMessages, message.subject));
 
@@ -50,12 +53,13 @@
             }
 
             try {
-                const loadedMessages = await gmailOperations.run(() => getThreadMessages(message));
+                const loadedIds = await gmailOperations.loadThread(message);
                 if (cancelled) {
                     return;
                 }
 
-                threadMessages = sortThreadMessages(loadedMessages);
+                threadIds = loadedIds;
+                if (!threadMessages.length) return;
                 const selectedIndex = threadMessages.findIndex(({id}) => id === message.id);
                 const expandedIndex = selectedIndex >= 0 ? selectedIndex : threadMessages.length - 1;
                 expandedMessageKeys = [getMessageKey(threadMessages[expandedIndex], expandedIndex)];
@@ -90,27 +94,10 @@
                 return;
             }
 
-            try {
-                await gmailOperations.run(() => modifyMessageLabels(messageId, [], ['UNREAD']));
-                threadMessages = threadMessages.map((threadMessage) =>
-                    threadMessage.id === messageId
-                        ? {
-                            ...threadMessage,
-                            unread: false,
-                            labelIds: threadMessage.labelIds.filter((labelId) => labelId !== 'UNREAD'),
-                        }
-                        : threadMessage
-                );
-                onMessageChanged?.(messageId, {
-                    unread: false,
-                    labelIds: message.labelIds.filter((labelId) => labelId !== 'UNREAD'),
-                });
-            } catch (ex) {
-                toastService.error({
-                    message: "Failed to mark message as read",
-                    error: formatError(ex),
-                });
-            }
+            if (gmailOperations.isPending([messageId])) return;
+            const action = getRelevantActions(message).find((candidate) =>
+                candidate.mutation.kind === 'labels' && candidate.mutation.removeLabelIds?.includes('UNREAD'));
+            if (action) await gmailOperations.runMessageAction(action, messageId);
         }, MARK_AS_READ_DELAY_MS);
 
         return () => window.clearTimeout(timeoutId);
@@ -129,30 +116,16 @@
             return;
         }
 
-        const executed = await gmailOperations.runMessageAction(action, message.id);
+        const messageId = message.id;
+        const executed = await gmailOperations.runMessageAction(action, messageId, {
+            onOptimistic: () => onOptimisticChange?.([messageId]),
+        });
         if (!executed) {
             return;
         }
 
-        if (action.changes) {
-            threadMessages = threadMessages.map((threadMessage) =>
-                threadMessage.id === message.id ? {...threadMessage, ...action.changes} : threadMessage
-            );
-        }
-
-        const selectedReplacement =
-            onMessageChanged?.(message.id, action.changes ?? {}, action.removeFromList) ?? false;
-
-        if (action.removeFromList && !selectedReplacement) {
-            ps.closeLast();
-        }
-
         toastService.success({
             message: `Success: ${action.label}`,
-            action: {
-                label: "Undo",
-                fn: () => {/* TODO */},
-            },
         });
     };
 
@@ -203,17 +176,17 @@
                         class="icon-button"
                         aria-label={action.label}
                         title={action.label}
-                        disabled={!message.id || gmailOperations.messageActionBusy || loadingThread}
+                        disabled={!message.id || actionPending || loadingThread}
                         onclick={() => runAction(action)}
                     >
                         <span class="icon">{action.icon}</span>
                     </button>
                 {/each}
-                <ContextMenu disabled={gmailOperations.messageActionBusy}>
+                <ContextMenu disabled={actionPending}>
                     {#each actions.slice(3) as action (action.label)}
                         <button
                             role="menuitem"
-                            disabled={!message.id || gmailOperations.messageActionBusy || loadingThread}
+                            disabled={!message.id || actionPending || loadingThread}
                             onclick={() => runAction(action)}
                         >
                             <span class="icon">{action.icon}</span>

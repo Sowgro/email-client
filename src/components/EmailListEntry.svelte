@@ -21,10 +21,8 @@
         onCheckedChange: (checked: boolean) => void,
         onMessagesChanged: (
             messageIds: string[],
-            changes: Partial<ParsedMessage>,
-            removeFromList?: boolean,
             previewOpen?: boolean,
-        ) => boolean,
+        ) => boolean | undefined,
         onBundleDrop?: (sourceMessageId: string, target: ParsedMessage) => void,
         parentListSnippet: Snippet
     } = $props();
@@ -84,32 +82,24 @@
             return;
         }
 
-        const executed = await gmailOperations.runBulkMessageAction(action, messageIds);
+        const executed = await gmailOperations.runBulkMessageAction(action, messageIds, {
+            onOptimistic: () => handleOptimisticChange(messageIds),
+        });
         if (!executed) {
             return;
-        }
-
-        const previewOpen = panelService.contains(emailView);
-        const selectedReplacement = props.onMessagesChanged?.(
-            messageIds,
-            action.changes ?? {},
-            action.removeFromList,
-            previewOpen,
-        ) ?? false;
-
-        if (action.removeFromList && previewOpen && !selectedReplacement) {
-            panelService.close(emailView)
         }
 
         toastService.success({
             message: messageIds.length === 1
                 ? `Success: ${action.label}`
                 : `${action.label}: ${messageIds.length} messages`,
-            action: {
-                label: "Undo",
-                fn: () => {/* TODO */}
-            }
         });
+    };
+
+    const handleOptimisticChange = (messageIds: string[]) => {
+        const previewOpen = panelService.contains(emailView);
+        const selectedReplacement = props.onMessagesChanged(messageIds, previewOpen);
+        if (selectedReplacement === false && previewOpen) panelService.close(emailView);
     };
 
 </script>
@@ -117,22 +107,19 @@
 {#snippet emailView()}
     <EmailView
             message={props.message}
-            onMessageChanged={(messageId, changes, removeFromList) => props.onMessagesChanged(
-                [messageId],
-                changes,
-                removeFromList,
-                panelService.contains(emailView),
-            )}
+            onOptimisticChange={handleOptimisticChange}
     />
 {/snippet}
 
 <ListEntryFrame
+        itemKey={props.message.threadId ? `thread:${props.message.threadId}` : `message:${props.message.id}`}
         showCheckbox={props.showCheckbox}
         checked={props.checked}
         onCheckedChange={(props.onCheckedChange)!}
         {unread}
         actions={actions.slice(0, 3)}
         runAction={runAction}
+        busy={gmailOperations.isPending(props.threadMessages.flatMap(({id}) => id ? [id] : []))}
         selected={panelService.contains(emailView)}
         onSelect={() => panelService.openAfter(props.parentListSnippet, emailView)}
         onDragStart={handleDragStart}

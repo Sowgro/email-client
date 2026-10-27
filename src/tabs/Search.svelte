@@ -4,7 +4,6 @@
     import {Router} from "../services/Router.svelte";
     import {getContext} from "svelte";
     import {Context} from "../Context";
-    import {listMessagePage} from "../services/GmailService";
 
     const router: Router = getContext(Context.ROUTER)
 
@@ -12,14 +11,10 @@
         new URL(router.url, window.location.origin).searchParams.get('q')?.trim() ?? ''
     )
 
-    const getMessages = async (pageToken?: string) => listMessagePage({
-        pageToken,
-        query,
-    });
 </script>
 
 <PanelHost>
     {#key query}
-        <EmailList {getMessages}/>
+        <EmailList options={{query}}/>
     {/key}
 </PanelHost>

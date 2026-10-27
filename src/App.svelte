@@ -9,11 +9,15 @@
     import {AuthService} from "./services/AuthService.svelte";
     import {GmailOperationService} from "./services/GmailOperationService.svelte";
     import {SenderAvatarService} from "./services/SenderAvatarService";
+    import {MessageStore} from "./services/MessageStore.svelte";
 
     const toastService = new ToastService()
     setContext(Context.TOAST_SERVICE, toastService)
 
-    const gmailOperationService = new GmailOperationService(toastService)
+    const messageStore = new MessageStore()
+    setContext(Context.MESSAGE_STORE, messageStore)
+
+    const gmailOperationService = new GmailOperationService(toastService, messageStore)
     setContext(Context.GMAIL_OPERATION_SERVICE, gmailOperationService)
 
     const router = new Router()

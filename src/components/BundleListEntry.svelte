@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {listMessagePage, type ParsedMessage} from "../services/GmailService";
+    import type {ParsedMessage} from "../services/GmailService";
     import type {MessageAction} from "../MessageActions";
     import {PanelService} from "../services/PanelService.svelte";
     import {getContext, type Snippet} from "svelte";
@@ -9,6 +9,7 @@
     import {formatListDate} from "../DateFormatter";
     import {formatSenderName} from "../SenderFormatter";
     import ListEntryFrame from "./ListEntryFrame.svelte";
+    import type {GmailOperationService} from "../services/GmailOperationService.svelte";
 
     let props: {
         representative: ParsedMessage,
@@ -18,11 +19,20 @@
         actions: MessageAction[],
         onBundleDrop: (sourceMessageId: string, target: ParsedMessage) => void,
         onCheckedChange: (checked: boolean) => void,
-        onRunAction: (action: MessageAction) => void,
+        onRunAction: (action: MessageAction, onOptimistic: () => void) => void,
+        onMessagesChanged: (messageIds: string[], previewOpen?: boolean) => boolean | undefined,
         parentListSnippet: Snippet
     } = $props();
 
     let panelService: PanelService = getContext(Context.PANEL_SERVICE)
+    const gmailOperations: GmailOperationService = getContext(Context.GMAIL_OPERATION_SERVICE);
+    const targetIds = () => props.bundleListItem.actionMessages.flatMap(({id}) => id ? [id] : []);
+
+    const runAction = (action: MessageAction) => props.onRunAction(action, () => {
+        const previewOpen = panelService.contains(bundleList);
+        const selectedReplacement = props.onMessagesChanged(targetIds(), previewOpen);
+        if (selectedReplacement === false && previewOpen) panelService.close(bundleList);
+    });
 
     const count = $derived(
         props.representative.bundleSummary?.hasMore
@@ -64,12 +74,11 @@
 
 {#snippet bundleList()}
     <EmailList
-            getMessages={(pageToken?: string) => listMessagePage({
-                pageToken,
+            options={{
                 labelIds: [props.bundleListItem.bundleLabelId!],
                 includeSpamTrash: true,
                 includeBundleSummaries: false,
-            })}
+            }}
             groupByDate
             parseBundles={false}
             bundleInfo={props.bundleListItem}
@@ -78,12 +87,14 @@
 {/snippet}
 
 <ListEntryFrame
+        itemKey={`bundle:${props.bundleListItem.bundleLabelId}`}
         showCheckbox={props.showCheckbox}
         checked={props.checked}
         onCheckedChange={props.onCheckedChange}
-        unread={props.representative.unread}
+        unread={props.bundleListItem.actionMessages.some((message) => message.unread)}
         actions={props.actions?.slice(0, 3)}
-        runAction={props.onRunAction}
+        runAction={runAction}
+        busy={gmailOperations.isPending(targetIds())}
         selected={panelService.contains(bundleList)}
         onSelect={() => panelService.openAfter(props.parentListSnippet, bundleList)}
         onDragStart={undefined}

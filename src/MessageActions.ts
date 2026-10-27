@@ -1,118 +1,77 @@
-import {
-    batchModifyMessageLabels,
-    deleteMessageForever,
-    modifyMessageLabels,
-    moveMessageToTrash,
-    type ActionableMessage,
-    type ParsedMessage,
-    restoreMessageFromTrash
-} from "./services/GmailService";
+import type {ActionableMessage} from "./services/GmailService";
+import type {MessageMutation} from "./MessageMutation";
 
 interface MessageAction {
     label: string;
     icon: string;
-    onAction: (messageId: string) => Promise<void>;
-    onBulkAction?: (messageIds: string[]) => Promise<void>;
+    mutation: MessageMutation;
     confirm?: (count: number) => boolean;
-    changes?: Partial<ParsedMessage>;
-    removeFromList?: boolean;
     isActive?: boolean;
-}
-
-const INDIVIDUAL_ACTION_CONCURRENCY = 25;
-
-async function executeIndividually(
-    messageIds: string[],
-    action: (messageId: string) => Promise<void>,
-) {
-    for (let index = 0; index < messageIds.length; index += INDIVIDUAL_ACTION_CONCURRENCY) {
-        await Promise.all(messageIds.slice(index, index + INDIVIDUAL_ACTION_CONCURRENCY).map(action));
-    }
 }
 
 const star: MessageAction = {
     label: 'Pin message',
     icon: "push_pin",
-    onAction: (id) => modifyMessageLabels(id, ['STARRED']),
-    onBulkAction: (ids) => batchModifyMessageLabels(ids, ['STARRED']),
-    changes: {starred: true},
+    mutation: {kind: 'labels', addLabelIds: ['STARRED']},
     isActive: false
 }
 
 const unstar: MessageAction = {
     label: 'Unpin message',
     icon: "push_pin",
-    onAction: (id) => modifyMessageLabels(id, [], ['STARRED']),
-    onBulkAction: (ids) => batchModifyMessageLabels(ids, [], ['STARRED']),
-    changes: {starred: false},
+    mutation: {kind: 'labels', removeLabelIds: ['STARRED']},
     isActive: true
 }
 
 const archive: MessageAction = {
     label: "Done",
     icon: "check",
-    onAction: (id) => modifyMessageLabels(id, [], ['INBOX']),
-    onBulkAction: (ids) => batchModifyMessageLabels(ids, [], ['INBOX']),
-    removeFromList: true,
+    mutation: {kind: 'labels', removeLabelIds: ['INBOX']},
 }
 
 const trash: MessageAction = {
     label: "Move to trash",
     icon: "delete",
-    onAction: moveMessageToTrash,
-    onBulkAction: (ids) => executeIndividually(ids, moveMessageToTrash),
-    removeFromList: true,
+    mutation: {kind: 'trash'},
 }
 
 const restore: MessageAction = {
     label: "Restore from trash",
     icon: "restore_from_trash",
-    onAction: restoreMessageFromTrash,
-    onBulkAction: (ids) => executeIndividually(ids, restoreMessageFromTrash),
-    removeFromList: true,
+    mutation: {kind: 'restore'},
 }
 
 const permanentlyDelete: MessageAction = {
     label: "Delete forever",
     icon: "delete_forever",
-    onAction: deleteMessageForever,
-    onBulkAction: (ids) => executeIndividually(ids, deleteMessageForever),
+    mutation: {kind: 'delete'},
     confirm: (count) => window.confirm(
         `Permanently delete ${count === 1 ? 'this message' : `${count} messages`}? This cannot be undone.`
     ),
-    removeFromList: true,
 }
 
 const moveToInbox: MessageAction = {
     label: "Move to inbox",
     icon: "move_to_inbox",
-    onAction: (id) => modifyMessageLabels(id, ['INBOX']),
-    onBulkAction: (ids) => batchModifyMessageLabels(ids, ['INBOX']),
-    removeFromList: true,
+    mutation: {kind: 'labels', addLabelIds: ['INBOX']},
 }
 
 const markUnread: MessageAction = {
     label: "Mark as unread",
     icon: "mark_email_unread",
-    onAction: (id) => modifyMessageLabels(id, ['UNREAD']),
-    onBulkAction: (ids) => batchModifyMessageLabels(ids, ['UNREAD']),
-    changes: {unread: true},
+    mutation: {kind: 'labels', addLabelIds: ['UNREAD']},
 }
 
 const markSpam: MessageAction = {
     label: "Mark as spam",
     icon: "report",
-    onAction: (id) => modifyMessageLabels(id, ['SPAM'], ['INBOX']),
-    onBulkAction: (ids) => batchModifyMessageLabels(ids, ['SPAM'], ['INBOX']),
-    removeFromList: true,
+    mutation: {kind: 'labels', addLabelIds: ['SPAM'], removeLabelIds: ['INBOX']},
 }
 
 const markRead: MessageAction = {
     label: "Mark as read",
     icon: "mark_email_read",
-    onAction: (id) => modifyMessageLabels(id, [], ['UNREAD']),
-    onBulkAction: (ids) => batchModifyMessageLabels(ids, [], ['UNREAD']),
-    changes: {unread: false},
+    mutation: {kind: 'labels', removeLabelIds: ['UNREAD']},
 }
 
 function getRelevantActions(message: ActionableMessage): MessageAction[] {

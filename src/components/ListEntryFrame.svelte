@@ -1,12 +1,9 @@
 <script lang="ts">
-    import {getContext, type Snippet} from "svelte";
+    import type {Snippet} from "svelte";
     import type {MessageAction} from "../MessageActions";
-    import type {GmailOperationService} from "../services/GmailOperationService.svelte";
-    import {Context} from "../Context";
-
-    let gmailOperations: GmailOperationService = getContext(Context.GMAIL_OPERATION_SERVICE)
 
     let props: {
+        itemKey: string,
         showCheckbox: boolean,
         checked: boolean,
         onCheckedChange: (checked: boolean) => void,
@@ -16,6 +13,7 @@
         content: Snippet,
         date: Snippet,
         actions: MessageAction[],
+        busy?: boolean,
         runAction: (action: MessageAction) => void,
         selected: boolean
         onSelect: () => void,
@@ -47,6 +45,7 @@
 </script>
 
 <div
+        data-item-key={props.itemKey}
         class:selected={props.selected}
         class:selection-visible={props.showCheckbox || props.checked}
         class:drag-over={dragOver}
@@ -92,7 +91,7 @@
                     class="icon-button"
                     aria-label={action.label}
                     title={action.label}
-                    disabled={gmailOperations.messageActionBusy}
+                    disabled={props.busy}
                     onclick={() => props.runAction(action)}
             >
                 <span class="icon">{action.icon}</span>

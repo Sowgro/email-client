@@ -428,6 +428,7 @@ export class AuthService {
     }
 
     private activateAccount(profile: AccountProfile, token: StoredToken) {
+        this.gmailOperations.setAccount(profile.emailAddress);
         const key = accountKey(profile.emailAddress);
         const existingIndex = this.accounts.findIndex((account) => accountKey(account.emailAddress) === key);
 
@@ -491,6 +492,7 @@ export class AuthService {
     }
 
     private deactivateSession() {
+        this.gmailOperations.setAccount(undefined);
         if (this.refreshTimer) {
             clearTimeout(this.refreshTimer);
             this.refreshTimer = undefined;

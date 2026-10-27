@@ -1,11 +1,11 @@
 <script lang="ts">
-    import {getContext, onMount, type Snippet} from "svelte";
+    import {getContext, onMount, untrack, type Snippet} from "svelte";
     import {Context} from "../Context";
     import EmailListEntry from "./EmailListEntry.svelte";
     import BundleListEntry from "./BundleListEntry.svelte";
     import {
         formatError,
-        type MessagePage,
+        type MessageListOptions,
         type ParsedMessage,
     } from "../services/GmailService";
     import {
@@ -24,16 +24,17 @@
     } from "../MessageActions";
     import SectionHeader from "./SectionHeader.svelte";
     import {activateNextMessage, emailListNavigation} from "../emailListNavigation";
+    import {MessageStore} from "../services/MessageStore.svelte";
 
     let {
-        getMessages,
+        options,
         groupByDate = false,
         groupPins = false,
         parseBundles = true,
         bundleInfo,
         selfSnippet
     }: {
-        getMessages: (pageToken?: string) => Promise<MessagePage>,
+        options: MessageListOptions,
         groupByDate?: boolean,
         groupPins?: boolean,
         parseBundles?: boolean,
@@ -41,14 +42,21 @@
         selfSnippet?: Snippet
     } = $props()
 
-    let messages: ParsedMessage[] = $state([]);
-    let nextPageToken: string | undefined = $state();
+    const messageStore: MessageStore = getContext(Context.MESSAGE_STORE);
+    // Filter changes mount a new list (search is keyed by its query).
+    const query = untrack(() => messageStore.query(options));
+    let messages = $derived(messageStore.messagesFor(query));
+    let nextPageToken = $derived(query.nextPageToken);
     let loading = $state(true);
     let bundling = $state(false);
     let emailListRoot: HTMLDivElement | undefined = $state();
+    let mounted = false;
+    let loadSequence = 0;
     const selection = new Selection<EmailListItem>((item) => item.key);
 
-    const getRepresentative = (item: EmailListItem) => item.representative;
+    const getRepresentative = (item: EmailListItem) => item.kind === 'bundle'
+        ? {...item.representative, starred: item.actionMessages.some((message) => message.starred)}
+        : item.representative;
 
     const getMessageSections = (items: EmailListItem[]): MessageSection<EmailListItem>[] => {
         let r: MessageSection<EmailListItem>[] = [{label: null, messages: items}];
@@ -73,23 +81,22 @@
 
     const handleMessagesChanged = (
         messageIds: string[],
-        changes: Partial<ParsedMessage>,
-        removeFromList = false,
         previewOpen = false,
-    ): boolean => {
+    ): boolean | undefined => {
         const changedIds = new Set(messageIds);
-        if (!removeFromList) {
-            messages = messages.map((message) =>
-                message.id && changedIds.has(message.id) ? {...message, ...changes} : message
-            );
-            return false;
-        }
-
-        const hasNextMessage = previewOpen && activateNextMessage(emailListRoot);
-
-        messages = messages.filter(({id}) => !id || !changedIds.has(id));
-        return hasNextMessage;
+        if (messages.some(({id}) => id && changedIds.has(id))) return undefined;
+        return previewOpen && activateNextMessage(emailListRoot, new Set(listItems.map((item) => item.key)));
     }
+
+    const handleRemovedSelection = () => {
+        const visibleKeys = new Set(listItems.map((item) => item.key));
+        const selectedKey = emailListRoot?.querySelector<HTMLElement>('.email.selected')?.dataset.itemKey;
+        if (!selectedKey || visibleKeys.has(selectedKey) || activateNextMessage(emailListRoot, visibleKeys)) return;
+        const panels = panelService.getPanels();
+        const currentPanel = selfSnippet ?? panelService.getInitialPanel();
+        const nextPanel = panels[panels.indexOf(currentPanel) + 1];
+        if (nextPanel) panelService.close(nextPanel);
+    };
 
     const activateOnKey = (event: KeyboardEvent, action: () => void) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -98,16 +105,17 @@
         }
     }
 
-    async function loadMessages(pageToken?: string) {
-        loading = true;
+    async function loadMessages(pageToken?: string, background = false) {
+        const sequence = ++loadSequence;
+        const generation = messageStore.generation;
+        if (!background) loading = true;
         try {
-            const page = await gmailOperations.run(() => getMessages(pageToken));
-            messages = pageToken ? [...messages, ...page.messages] : page.messages;
-            nextPageToken = page.nextPageToken;
-            if (!pageToken) {
+            await gmailOperations.loadMessagePage(query, pageToken);
+            if (mounted && sequence === loadSequence && !pageToken && !background) {
                 selection.clear();
             }
         } catch (ex) {
+            if (!mounted || generation !== messageStore.generation) return;
             toastService.error({
                 message: `Failed to load messages`,
                 error: formatError(ex),
@@ -117,7 +125,7 @@
                 }
             });
         } finally {
-            loading = false;
+            if (sequence === loadSequence) loading = false;
         }
     }
 
@@ -169,29 +177,57 @@
         return [...new Set(targetGroups.flat())];
     };
 
-    const runBulkAction = async (action: MessageAction, items = selection.selected(listItems)) => {
-        if (!items.length || gmailOperations.messageActionBusy) {
+    const getTargetIds = (items: EmailListItem[]) =>
+        [...new Set(items.flatMap((item) => item.actionMessages.flatMap(({id}) => id ? [id] : [])))];
+
+    const itemsPending = (items: EmailListItem[]) => gmailOperations.isPending(getTargetIds(items));
+
+    const runBulkAction = async (
+        action: MessageAction,
+        items = selection.selected(listItems),
+        onOptimistic?: () => void,
+    ) => {
+        if (!items.length || itemsPending(items)) {
             return;
         }
 
         let messageIds: string[] = [];
-        const executed = await gmailOperations.runBulkMessageAction(action, async () => {
+        const knownIds = getTargetIds(items);
+        const targets = items.some((item) => item.kind === 'bundle') ? async () => {
             messageIds = await resolveActionTargetIds(items);
             return messageIds;
+        } : (messageIds = knownIds);
+        const executed = await gmailOperations.runBulkMessageAction(action, targets, {
+            optimisticIds: knownIds,
+            onOptimistic: () => {
+                selection.clear();
+                if (onOptimistic) onOptimistic();
+                else handleRemovedSelection();
+            },
         });
         if (!executed) {
             return;
         }
 
-        await loadMessages();
         toastService.success({
             message: `${action.label}: ${messageIds.length} ${messageIds.length === 1 ? 'message' : 'messages'}`,
         });
     };
 
     onMount(() => {
+        mounted = true;
         void loadMessages();
+        return () => { mounted = false; };
     })
+
+    let observedRefresh = query.refreshVersion;
+    $effect(() => {
+        const version = query.refreshVersion;
+        if (version !== observedRefresh) {
+            observedRefresh = version;
+            untrack(() => { void loadMessages(undefined, true); });
+        }
+    });
 
     const requestBundleTitle = (initialTitle = ''): string | undefined => {
         const title = window.prompt('Name this bundle', initialTitle)?.trim();
@@ -215,11 +251,7 @@
         bundling = true;
         try {
             await gmailOperations.run(() => renameBundle(bundleInfo.bundleLabelId, title));
-            messages = messages.map((listedMessage) =>
-                listedMessage.bundleLabelId === bundleInfo.bundleLabelId
-                    ? {...listedMessage, bundleTitle: title}
-                    : listedMessage
-            );
+            messageStore.renameBundle(bundleInfo.bundleLabelId, title);
             toastService.success({message: 'Bundle renamed'});
         } catch (ex) {
             toastService.error({
@@ -270,7 +302,7 @@
                 class="icon-button"
                 aria-label={allVisibleSelected ? 'Clear selection' : 'Select all'}
                 title={allVisibleSelected ? 'Clear selection' : 'Select all'}
-                disabled={!listItems.length || loading || gmailOperations.messageActionBusy}
+                disabled={!listItems.length || loading}
                 onclick={() => selection.toggle(listItems)}
             >
                 <span class="icon">
@@ -286,7 +318,7 @@
                         class="icon-button"
                         aria-label={`${action.label} selected`}
                         title={action.label}
-                        disabled={gmailOperations.messageActionBusy}
+                        disabled={itemsPending(selection.selected(listItems))}
                         onclick={() => runBulkAction(action)}
                     >
                         <span class="icon">{action.icon}</span>
@@ -324,6 +356,7 @@
                             onCheckChanged={(checked) => selection.set(section.messages, checked)}
                             selectionActive={selection.active}
                             onSectionDone={getSectionDoneAction(section) && (() => markSectionDone(section))}
+                            busy={itemsPending(section.messages)}
                     />
                 {/if}
                 {#each section.messages as item (item.key)}
@@ -336,7 +369,8 @@
                             showCheckbox={selection.active}
                             onCheckedChange={(checked) => selection.set([item], checked)}
                             onBundleDrop={handleBundleDrop}
-                            onRunAction={(action) => runBulkAction(action, [item])}
+                            onRunAction={(action, onOptimistic) => runBulkAction(action, [item], onOptimistic)}
+                            onMessagesChanged={handleMessagesChanged}
                             actions={getCommonActions(item.actionMessages)}
                             parentListSnippet={selfSnippet ?? panelService.getInitialPanel()}
                         />

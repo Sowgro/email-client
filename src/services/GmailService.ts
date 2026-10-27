@@ -204,10 +204,11 @@ export async function modifyMessageLabels(
 
 export async function moveMessageToTrash(messageId: string) {
     try {
-        await gapi.client.gmail.users.messages.trash({
+        const response = await gapi.client.gmail.users.messages.trash({
             userId: 'me',
             id: messageId,
         });
+        return response.result.labelIds;
     } catch (error) {
         throw new GmailApiError(error);
     }
@@ -215,10 +216,11 @@ export async function moveMessageToTrash(messageId: string) {
 
 export async function restoreMessageFromTrash(messageId: string) {
     try {
-        await gapi.client.gmail.users.messages.untrash({
+        const response = await gapi.client.gmail.users.messages.untrash({
             userId: 'me',
             id: messageId,
         });
+        return response.result.labelIds;
     } catch (error) {
         throw new GmailApiError(error);
     }

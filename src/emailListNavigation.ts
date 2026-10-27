@@ -34,7 +34,7 @@ const isTextEntry = (target: EventTarget | null) =>
     target instanceof HTMLElement
     && Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
 
-export const activateNextMessage = (root?: HTMLDivElement): boolean => {
+export const activateNextMessage = (root?: HTMLDivElement, visibleKeys?: ReadonlySet<string>): boolean => {
     if (!root) {
         return false;
     }
@@ -46,7 +46,8 @@ export const activateNextMessage = (root?: HTMLDivElement): boolean => {
 
     const listedMessages = getListedMessages(root);
     const selectedIndex = listedMessages.indexOf(selectedMessage);
-    const nextMessage = listedMessages[selectedIndex + 1];
+    const nextMessage = listedMessages.slice(selectedIndex + 1)
+        .find((message) => !visibleKeys || visibleKeys.has(message.dataset.itemKey ?? ''));
 
     if (!nextMessage) {
         return false;
