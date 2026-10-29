@@ -26,10 +26,10 @@
 
 <div id="sidebar">
         <div id="top">
-            <button onclick={() => toastService.info({message: "Composition and reply features are not yet implemented."})}>
-                <span class="icon">edit</span>
-                <span class="label">Compose</span>
-            </button>
+<!--            <button onclick={() => toastService.info({message: "Composition and reply features are not yet implemented."})}>-->
+<!--                <span class="icon">edit</span>-->
+<!--                <span class="label">Compose</span>-->
+<!--            </button>-->
             {#each destinations as destination}
                 <a
                     href={destination.path}
@@ -82,7 +82,7 @@
         flex-direction: column;
         max-width: fit-content;
         background-color: rgba(0, 0, 0, 0.15);
-        padding: 15px;
+        padding: 10px;
         min-width: 150px;
         gap: 3px;
         justify-content: space-between;
@@ -115,7 +115,7 @@
     }
 
     button {
-        margin-bottom: 12px;
+        margin-bottom: 8px;
     }
 
     @media (max-width: 500px) {
