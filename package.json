@@ -10,6 +10,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
   },
   "devDependencies": {
+    "@mgcrea/vite-plugin-build-info": "^0.5.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
     "@tsconfig/svelte": "^5.0.4",
     "@types/gapi": "^0.0.47",
@@ -18,6 +19,7 @@
     "svelte-check": "^4.1.6",
     "typescript": "~5.8.3",
     "vite": "^6.3.5",
+    "vite-plugin-build-info": "^0.1.2",
     "vite-plugin-singlefile": "^2.3.3"
   },
   "dependencies": {
