@@ -64,7 +64,10 @@
 
 <div id="header">
     <div class="left">
-        {currentDate}
+        <div class="stacked">
+            <span class="date">{currentDate}</span>
+            <div class="wordmark"><span class="icon">mail</span>Fettucemail</div>
+        </div>
     </div>
     <div class="middle">
         <form role="search" onsubmit={(event) => { event.preventDefault(); search(); }}>
@@ -189,6 +192,51 @@
         height: 1px;
         margin: 3px 6px;
         background: rgba(255, 255, 255, 0.15);
+    }
+
+    .wordmark {
+        font-weight: bold;
+        color: #e083ff;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+
+        animation-delay: 3s;
+        animation-direction: reverse;
+        animation-fill-mode: forwards;
+        animation-name: crossfade;
+        animation-duration: 1s; /* Total time for both loops */
+        animation-timing-function: ease-in-out;
+    }
+
+    .date {
+        opacity: 0;
+        z-index: 1;
+
+        animation-fill-mode: forwards;
+        animation-delay: 3s;
+        animation-name: crossfade;
+        animation-duration: 1s; /* Total time for both loops */
+        animation-timing-function: ease-in-out;
+    }
+
+    .stacked {
+        display: grid;
+
+        & > * {
+            grid-area: 1/1;
+        }
+    }
+
+    @keyframes crossfade {
+        0% {
+            opacity: 0;
+            z-index: 1;
+        }
+        100% {
+            opacity: 1;
+            z-index: 2;
+        }
     }
 
     @keyframes spin {
