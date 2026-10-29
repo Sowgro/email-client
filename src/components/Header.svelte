@@ -84,8 +84,11 @@
                     aria-expanded={open}
                     onclick={toggle}
                 >
-                    <span class="icon sync-icon" class:active="{operationService.busy}">sync</span>
-                    <span class="icon sync-icon" class:active={authService.refreshRequired}>warning</span>
+                    {#if authService.refreshRequired}
+                        <span class="icon">warning</span>
+                    {:else}
+                        <span class="icon sync-icon" class:active="{operationService.busy}">sync</span>
+                    {/if}
                     {authService.profile?.emailAddress ?? 'Google account'}
                     <span class="icon" aria-hidden="true">arrow_drop_down</span>
                 </button>
