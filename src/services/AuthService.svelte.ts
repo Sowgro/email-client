@@ -63,6 +63,7 @@ export class AuthService {
 
     private tokenClient: TokenClient | undefined;
     private readonly accountTokens = new Map<string, StoredToken>();
+    private lastActiveEmailAddress: string | undefined;
     private expiresAt = 0;
     private refreshTimer: ReturnType<typeof setTimeout> | undefined;
     private initialization: Promise<void> | undefined;
@@ -88,7 +89,7 @@ export class AuthService {
 
         try {
             await this.initialize();
-            const token = await this.requestToken('');
+            const token = await this.requestToken('', this.lastActiveEmailAddress);
             const profile = await this.loadProfile();
             this.activateAccount(profile, token);
             return true;
@@ -225,6 +226,7 @@ export class AuthService {
 
         this.accountTokens.delete(key);
         this.accounts = this.accounts.filter((account) => accountKey(account.emailAddress) !== key);
+        this.lastActiveEmailAddress = undefined;
 
         if (!this.activateNextAvailableAccount()) {
             this.deactivateSession();
@@ -309,34 +311,35 @@ export class AuthService {
             }
 
             const preferredKey = accountKey(storedAccounts.activeEmailAddress ?? '');
-            const candidates = [...this.accounts].sort((left, right) =>
-                Number(accountKey(right.emailAddress) === preferredKey)
-                - Number(accountKey(left.emailAddress) === preferredKey)
-            );
+            const account = this.accounts.find((candidate) => accountKey(candidate.emailAddress) === preferredKey)
+                ?? this.accounts[0];
+            this.lastActiveEmailAddress = account?.emailAddress;
 
-            for (const account of candidates) {
+            if (account) {
                 const key = accountKey(account.emailAddress);
-                const token = this.accountTokens.get(key);
-                if (!token || token.expiresAt <= Date.now() + REFRESH_MARGIN_MS) {
-                    continue;
-                }
-
-                gapi.client.setToken({access_token: token.accessToken});
                 try {
-                    const profile = await this.loadProfile();
-                    if (accountKey(profile.emailAddress) !== key) {
-                        this.accountTokens.delete(key);
-                        this.accounts = this.accounts.filter((candidate) =>
-                            accountKey(candidate.emailAddress) !== key
-                        );
+                    let token = this.accountTokens.get(key);
+                    let profile: AccountProfile | undefined;
+                    if (token && token.expiresAt > Date.now() + REFRESH_MARGIN_MS) {
+                        gapi.client.setToken({access_token: token.accessToken});
+                        try {
+                            profile = await this.loadProfile();
+                        } catch {
+                            // A saved token can be revoked before its expiry time.
+                        }
                     }
-                    this.activateAccount(profile, token);
+                    if (!profile) {
+                        token = await this.requestToken('', account.emailAddress);
+                        profile = await this.loadProfile();
+                    }
+                    if (accountKey(profile.emailAddress) !== key) {
+                        throw new Error(`Google signed in ${profile.emailAddress} instead of ${account.emailAddress}.`);
+                    }
+                    this.activateAccount(profile, token!);
                     return;
-                } catch {
-                    this.accountTokens.delete(key);
-                    this.accounts = this.accounts.filter((candidate) =>
-                        accountKey(candidate.emailAddress) !== key
-                    );
+                } catch (error) {
+                    // Keep the account so a blocked popup can be retried with a click.
+                    this.error = getErrorMessage(error);
                 }
             }
 
@@ -438,6 +441,7 @@ export class AuthService {
         gapi.client.setToken({access_token: token.accessToken});
         this.expiresAt = token.expiresAt;
         this.profile = profile;
+        this.lastActiveEmailAddress = profile.emailAddress;
         this.authenticated = true;
         this.refreshRequired = false;
         this.persistAccounts();
@@ -481,7 +485,7 @@ export class AuthService {
         }
 
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
-            activeEmailAddress: this.profile?.emailAddress,
+            activeEmailAddress: this.profile?.emailAddress ?? this.lastActiveEmailAddress,
             accounts,
         } satisfies StoredAccounts));
     }
