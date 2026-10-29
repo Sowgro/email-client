@@ -8,14 +8,14 @@
     import {ToastService} from "../services/ToastService.svelte";
 
     let router: Router = getContext(Context.ROUTER)
-    let auth: AuthService = getContext(Context.AUTH_SERVICE)
+    let authService: AuthService = getContext(Context.AUTH_SERVICE)
     let operationService: GmailOperationService = getContext(Context.GMAIL_OPERATION_SERVICE)
     let toastService: ToastService = getContext(Context.TOAST_SERVICE)
 
     let searchQuery = $state('')
 
     const isCurrentAccount = (emailAddress: string) =>
-        emailAddress.toLowerCase() === auth.profile?.emailAddress.toLowerCase()
+        emailAddress.toLowerCase() === authService.profile?.emailAddress.toLowerCase()
 
     const currentDate = new Intl.DateTimeFormat(undefined, {
         weekday: 'long',
@@ -42,21 +42,21 @@
     }
 
     const switchAccount = async (emailAddress: string) => {
-        const switched = await auth.switchAccount(emailAddress)
-        if (!switched && auth.error) {
+        const switched = await authService.switchAccount(emailAddress)
+        if (!switched && authService.error) {
             toastService.error({
                 message: 'Could not switch accounts',
-                error: auth.error,
+                error: authService.error,
             })
         }
     }
 
     const addAccount = async () => {
-        const added = await auth.addAccount()
-        if (!added && auth.error) {
+        const added = await authService.addAccount()
+        if (!added && authService.error) {
             toastService.error({
                 message: 'Could not add account',
-                error: auth.error,
+                error: authService.error,
             })
         }
     }
@@ -85,17 +85,18 @@
                     onclick={toggle}
                 >
                     <span class="icon sync-icon" class:active="{operationService.busy}">sync</span>
-                    {auth.profile?.emailAddress ?? 'Google account'}
+                    <span class="icon sync-icon" class:active={authService.refreshRequired}>warning</span>
+                    {authService.profile?.emailAddress ?? 'Google account'}
                     <span class="icon" aria-hidden="true">arrow_drop_down</span>
                 </button>
             {/snippet}
-            {#each auth.accounts as account (account.emailAddress)}
+            {#each authService.accounts as account (account.emailAddress)}
                 <button
                     role="menuitemradio"
                     class="account-option"
                     class:selected={isCurrentAccount(account.emailAddress)}
                     aria-checked={isCurrentAccount(account.emailAddress)}
-                    disabled={auth.busy || operationService.busy}
+                    disabled={authService.busy || operationService.busy}
                     onclick={() => switchAccount(account.emailAddress)}
                 >
                     <span class="icon" aria-hidden="true">account_circle</span>
@@ -103,11 +104,11 @@
                 </button>
             {/each}
             <span class="menu-separator" role="separator"></span>
-            <button role="menuitem" disabled={auth.busy || operationService.busy} onclick={addAccount}>
+            <button role="menuitem" disabled={authService.busy || operationService.busy} onclick={addAccount}>
                 <span class="icon" aria-hidden="true">person_add</span>
                 Add account
             </button>
-            <button role="menuitem" disabled={auth.busy} onclick={() => auth.signOut()}>
+            <button role="menuitem" disabled={authService.busy} onclick={() => authService.signOut()}>
                 <span class="icon" aria-hidden="true">logout</span>
                 Log out
             </button>
