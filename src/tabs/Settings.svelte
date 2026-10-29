@@ -10,7 +10,7 @@
         <h1>Settings</h1>
         <span>Not yet implemented</span>
         <hr>
-        <p>{__BUILD_INFO__.branch} {__BUILD_INFO__.commitShort}{__BUILD_INFO__.isDirty && "*"} - {formatter.format(new Date(__BUILD_INFO__.buildTime))}</p>
+        <p>{__BUILD_INFO__.isDirty ? "*" : ""} commit {__BUILD_INFO__.commitShort} on branch {__BUILD_INFO__.branch} at {formatter.format(new Date(__BUILD_INFO__.buildTime))}</p>
     </div>
 </div>
 
