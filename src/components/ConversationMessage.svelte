@@ -188,22 +188,6 @@
 
     {#if expanded}
         <div class="message-details">
-            {#if message.attachments.length}
-                <div class="attachments">
-                    {#each message.attachments as attachment (attachment.id ?? attachment.filename)}
-                        <button
-                            class="attachment"
-                            disabled={!attachment.id || downloadingAttachmentId === attachment.id}
-                            onclick={() => handleAttachmentDownload(attachment)}
-                        >
-                            <span class="icon">attach_file</span>
-                            <span class="attachment-name">{attachment.filename}</span>
-                            <span class="attachment-size">{formatAttachmentSize(attachment.size)}</span>
-                        </button>
-                    {/each}
-                </div>
-            {/if}
-
             {#if message.html}
                 <div class="scroll-wrapper">
                     <div class="message-body html-body">{@html sanitizedHtml}</div>
@@ -212,6 +196,22 @@
                 <div class="message-body plain-text">{displayText}</div>
             {:else}
                 <span class="empty-body">No message body found.</span>
+            {/if}
+
+            {#if message.attachments.length}
+                <div class="attachments">
+                    {#each message.attachments as attachment (attachment.id ?? attachment.filename)}
+                        <button
+                                class="attachment"
+                                disabled={!attachment.id || downloadingAttachmentId === attachment.id}
+                                onclick={() => handleAttachmentDownload(attachment)}
+                        >
+                            <span class="icon">attach_file</span>
+                            <span class="attachment-name">{attachment.filename}</span>
+                            <span class="attachment-size">{formatAttachmentSize(attachment.size)}</span>
+                        </button>
+                    {/each}
+                </div>
             {/if}
         </div>
     {/if}

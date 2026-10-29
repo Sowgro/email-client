@@ -256,7 +256,7 @@
         </div>
     </div>
     <span class="list-title">
-        <span class="icon">inbox</span>{bundleInfo!.bundleTitle ?? 'Untitled bundle'}
+        {bundleInfo!.bundleTitle ?? 'Untitled bundle'}
     </span>
 {/snippet}
 
